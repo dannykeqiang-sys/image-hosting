@@ -1,2 +1,3 @@
-# image-hosting
-Image Hosting - GitHub 图床
+# Image Hosting
+
+Upload your images, videos and HTML pages here.
