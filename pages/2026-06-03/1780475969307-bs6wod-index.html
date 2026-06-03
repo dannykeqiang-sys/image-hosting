@@ -1,0 +1,3126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>坐享其美 · 松颐智能座椅 · 双端 App</title>
+<style>
+/* =====================================================
+   DESIGN TOKENS
+   ===================================================== */
+:root{
+  --bg:#F5F7F3;
+  --surface:#FFFFFF;
+  --surface-2:#F0F2EB;
+  --crimson:#D14D3B;
+  --crimson-2:#E86A4A;
+  --crimson-deep:#B23A2A;
+  --sage:#7D8E7E;
+  --sage-soft:#C8D2C3;
+  --ink:#1B1F1A;
+  --ink-2:#5C6660;
+  --ink-3:#9AA39B;
+  --line:#E6E9E1;
+  --warning:#E5A23B;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* type scale - no crowding */
+  --t-display: 64px;
+  --t-h1: 28px;
+  --t-h2: 20px;
+  --t-h3: 16px;
+  --t-body: 14px;
+  --t-meta: 12px;
+  --t-caption: 11px;
+  --t-mono: 10px;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;background:#EAEEE3;color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC","Helvetica Neue",Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+body{
+  min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:60px 16px 48px;gap:48px;
+  background:radial-gradient(1400px 900px at 50% 0%, #F5F7F3 0%, #DDE3D2 100%);
+}
+
+.brand-line{
+  font-size:11px;letter-spacing:0.5em;color:var(--ink-2);text-transform:uppercase;font-weight:500;
+}
+.stage{
+  display:flex;gap:80px;flex-wrap:wrap;justify-content:center;align-items:flex-start;
+}
+.device-wrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:18px;}
+.device-label{
+  font-size:11px;letter-spacing:.36em;color:var(--ink-2);font-weight:500;
+  white-space:nowrap;
+}
+.device{
+  width:390px;height:844px;border-radius:54px;
+  background:#0d0f0c;padding:14px;
+  box-shadow:0 50px 130px -30px rgba(20,30,18,.55), 0 0 0 2px #1f231d, inset 0 0 0 2px #2a2e26;
+  position:relative;
+}
+.device::before{
+  content:"";position:absolute;top:24px;left:50%;transform:translateX(-50%);
+  width:104px;height:28px;background:#000;border-radius:18px;z-index:60;
+}
+.screen{
+  width:100%;height:100%;border-radius:42px;overflow:hidden;position:relative;
+  background:var(--bg);
+}
+
+/* status bar — leaves vertical room for the notch (28+24+pad) */
+.statusbar{
+  height:62px;display:flex;align-items:center;justify-content:space-between;
+  padding:18px 26px 0;font-size:14px;font-weight:600;color:var(--ink);
+  position:relative;z-index:5;
+  transition:color 600ms var(--ease);
+}
+.statusbar > span{padding-top:4px;}
+.statusbar .right{display:flex;gap:6px;align-items:center;padding-top:4px;}
+/* signal / wifi / battery icons */
+.sb-ic{display:inline-flex;align-items:center;justify-content:center;color:currentColor;}
+.sb-ic svg{width:14px;height:10px;}
+.sb-bat{display:inline-flex;align-items:center;gap:2px;}
+.sb-bat .bb{width:20px;height:10px;border:1.2px solid currentColor;border-radius:2.5px;position:relative;padding:1px;}
+.sb-bat .bb::after{content:"";display:block;width:65%;height:100%;background:currentColor;border-radius:1px;}
+.sb-bat .bn{width:1.5px;height:5px;background:currentColor;border-radius:0 1px 1px 0;margin-left:1px;opacity:.8;}
+
+/* top-right kebab in pages — sits inside flex action group */
+.kebab{
+  width:38px;height:38px;border-radius:12px;flex:none;
+  display:flex;align-items:center;justify-content:center;gap:3px;cursor:pointer;
+  background:#fff;
+  transition:background 240ms var(--ease), color 240ms var(--ease), transform 200ms var(--ease);
+}
+.kebab:active{transform:scale(.94);}
+.kebab:hover{background:var(--ink);color:#fff;}
+.elderly.is-songfeng .kebab, .care.is-bleeding .kebab{background:rgba(255,255,255,.18);color:#fff;}
+.elderly.is-songfeng .kebab:hover, .care.is-bleeding .kebab:hover{background:rgba(255,255,255,.32);}
+.kebab .kdot{width:4px;height:4px;border-radius:50%;background:currentColor;opacity:.9;}
+
+/* popover menu — anchored to the page top-right within the device */
+.menu-pop{
+  position:absolute;top:64px;right:20px;
+  background:rgba(255,255,255,.96);backdrop-filter:blur(20px);
+  border-radius:18px;padding:6px;min-width:208px;z-index:55;
+  box-shadow:0 24px 60px -16px rgba(20,30,18,.25);
+  opacity:0;transform:translateY(-8px) scale(.96);pointer-events:none;
+  transition:all 320ms var(--ease);
+}
+.menu-pop.show{opacity:1;transform:translateY(0) scale(1);pointer-events:auto;}
+.menu-pop .mi{
+  display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:12px;
+  font-size:13px;font-weight:500;cursor:pointer;color:var(--ink);
+  transition:background 200ms var(--ease);
+}
+.menu-pop .mi:hover{background:var(--surface-2);}
+.menu-pop .mi .mi-ic{
+  width:24px;height:24px;border-radius:8px;background:var(--surface-2);
+  display:flex;align-items:center;justify-content:center;flex:none;
+}
+.menu-pop .mi .mi-ic svg{width:14px;height:14px;}
+.menu-pop .mi.danger{color:var(--crimson);}
+.menu-pop .mi.danger .mi-ic{background:rgba(209,77,59,.1);color:var(--crimson);}
+.menu-pop .sep{height:1px;background:var(--line);margin:4px 8px;}
+
+/* hover tooltip */
+[data-tip]{position:relative;cursor:help;}
+[data-tip]::before{
+  content:attr(data-tip);
+  position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%) translateY(4px);
+  background:rgba(20,25,18,.94);color:#fff;padding:7px 11px;border-radius:10px;
+  font-size:11px;letter-spacing:.04em;font-weight:500;white-space:nowrap;
+  opacity:0;pointer-events:none;transition:all 240ms var(--ease);z-index:60;
+  backdrop-filter:blur(12px);
+}
+[data-tip]::after{
+  content:"";position:absolute;bottom:calc(100% + 2px);left:50%;
+  border:5px solid transparent;border-top-color:rgba(20,25,18,.94);
+  opacity:0;pointer-events:none;transition:all 240ms var(--ease);z-index:60;
+  transform:translateX(-50%);
+}
+[data-tip]:hover::before, [data-tip]:hover::after{
+  opacity:1;transform:translateX(-50%) translateY(0);
+}
+
+/* =====================================================
+   APP CONTAINER + PAGE TRANSITIONS
+   ===================================================== */
+.app{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;}
+
+.page{
+  position:absolute;top:62px;left:0;right:0;bottom:0;display:flex;flex-direction:column;
+  opacity:0;pointer-events:none;
+  transform:translateX(24px);
+  transition:opacity 500ms var(--ease), transform 500ms var(--ease);
+}
+.page.active{opacity:1;pointer-events:auto;transform:translateX(0);}
+.page.behind{transform:translateX(-24px);opacity:0;}
+
+/* =====================================================
+   ELDERLY (warm sage white)
+   ===================================================== */
+.elderly{ background:var(--bg); transition:background 700ms var(--ease), color 700ms var(--ease); }
+.elderly.is-songfeng{ background:var(--crimson); color:#fff;}
+.elderly.is-songfeng .statusbar{color:#fff;}
+
+/* ----- LOGIN — animated, expressive ----- */
+.e-login, .c-login{
+  flex:1;display:flex;flex-direction:column;
+  padding:0;position:relative;overflow-y:auto;overflow-x:hidden;
+  background:var(--bg);
+  scrollbar-width:none;
+}
+.e-login::-webkit-scrollbar, .c-login::-webkit-scrollbar{display:none;}
+
+/* Animated aurora behind login */
+.login-bg{
+  position:absolute;inset:0;z-index:0;overflow:hidden;
+}
+.login-bg .blob{
+  position:absolute;border-radius:50%;filter:blur(60px);
+  animation: blob-float 14s var(--ease) infinite;
+  opacity:.85;mix-blend-mode:multiply;
+}
+.login-bg .blob.b1{
+  width:340px;height:340px;background:radial-gradient(circle,rgba(209,77,59,.55) 0%,rgba(209,77,59,0) 70%);
+  top:-100px;right:-80px;animation-delay:0s;
+}
+.login-bg .blob.b2{
+  width:300px;height:300px;background:radial-gradient(circle,rgba(125,142,126,.55) 0%,rgba(125,142,126,0) 70%);
+  bottom:-60px;left:-60px;animation-delay:-5s;
+}
+.login-bg .blob.b3{
+  width:240px;height:240px;background:radial-gradient(circle,rgba(232,179,152,.5) 0%,rgba(232,179,152,0) 70%);
+  top:30%;left:30%;animation-delay:-9s;
+}
+@keyframes blob-float{
+  0%,100%{transform:translate(0,0) scale(1);}
+  33%{transform:translate(28px,-22px) scale(1.08);}
+  66%{transform:translate(-18px,18px) scale(.94);}
+}
+
+/* Hero image card on top of login */
+.login-hero{
+  position:relative;z-index:1;height:240px;margin:14px 16px 0;border-radius:26px;
+  overflow:hidden;background:#000;flex:none;
+  animation: heroIn 900ms var(--ease) both;
+}
+@keyframes heroIn{
+  0%{opacity:0;transform:translateY(-12px) scale(.98);}
+  100%{opacity:1;transform:translateY(0) scale(1);}
+}
+.login-hero img, .login-hero video{
+  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+}
+.login-hero img{animation: heroZoom 12s var(--ease) infinite alternate;}
+@keyframes heroZoom{0%{transform:scale(1);}100%{transform:scale(1.08);}}
+.login-hero::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(0,0,0,0) 30%,rgba(0,0,0,.55) 100%);
+}
+.login-hero .h-tag{
+  position:absolute;left:18px;top:18px;font-size:10px;letter-spacing:.32em;color:#fff;
+  background:rgba(255,255,255,.18);backdrop-filter:blur(12px);padding:6px 11px;border-radius:11px;
+  font-weight:500;z-index:2;
+  animation: chipIn 900ms 200ms var(--ease) both;
+}
+.login-hero .h-cap{
+  position:absolute;left:18px;right:18px;bottom:16px;color:#fff;z-index:2;
+  animation: capIn 900ms 350ms var(--ease) both;
+}
+@keyframes chipIn{0%{opacity:0;transform:translateY(-6px);}100%{opacity:1;transform:translateY(0);}}
+@keyframes capIn{0%{opacity:0;transform:translateY(8px);}100%{opacity:1;transform:translateY(0);}}
+.login-hero .h-cap .hh{font-size:18px;font-weight:600;letter-spacing:.02em;line-height:1.3;}
+.login-hero .h-cap .hs{font-size:11px;opacity:.85;margin-top:4px;letter-spacing:.05em;}
+
+/* Login content (form, role) below the hero */
+.login-body{
+  position:relative;z-index:2;background:transparent;
+  padding:22px 24px 28px;display:flex;flex-direction:column;gap:14px;
+}
+.login-body > *{animation: bodyIn 700ms var(--ease) both;}
+.login-body > *:nth-child(1){animation-delay:.10s;}
+.login-body > *:nth-child(2){animation-delay:.18s;}
+.login-body > *:nth-child(3){animation-delay:.26s;}
+.login-body > *:nth-child(4){animation-delay:.34s;}
+.login-body > *:nth-child(5){animation-delay:.42s;}
+.login-body > *:nth-child(6){animation-delay:.50s;}
+.login-body > *:nth-child(7){animation-delay:.58s;}
+@keyframes bodyIn{0%{opacity:0;transform:translateY(14px);}100%{opacity:1;transform:translateY(0);}}
+
+.brand-mini{display:flex;align-items:center;gap:10px;}
+.brand-mini .logo{
+  width:34px;height:34px;border-radius:11px;background:var(--ink);
+  display:flex;align-items:center;justify-content:center;color:#fff;
+  font-weight:700;font-size:14px;letter-spacing:-0.02em;
+  animation: logoSpin 800ms var(--ease) both;
+}
+.brand-mini .blogo{
+  font-size:11px;letter-spacing:.32em;color:var(--ink-2);font-weight:500;
+}
+@keyframes logoSpin{
+  0%{opacity:0;transform:rotate(-90deg) scale(.6);}
+  100%{opacity:1;transform:rotate(0) scale(1);}
+}
+
+.login-h{
+  font-size:28px;font-weight:700;line-height:1.2;letter-spacing:-0.02em;color:var(--ink);
+}
+.login-h .accent{
+  background:linear-gradient(120deg, var(--crimson) 0%, var(--crimson-2) 50%, var(--ink) 100%);
+  background-size:200% 100%;
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  animation: accentSweep 4s var(--ease) infinite;
+}
+@keyframes accentSweep{0%,100%{background-position:0% 50%;}50%{background-position:100% 50%;}}
+.login-sub{font-size:13px;color:var(--ink-2);line-height:1.55;max-width:300px;}
+
+.role{display:flex;flex-direction:column;gap:8px;}
+.role-card{
+  background:rgba(255,255,255,.72);backdrop-filter:blur(16px);
+  border-radius:20px;padding:14px 16px;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  cursor:pointer;border:1.5px solid rgba(20,25,18,.06);
+  transition:all 380ms var(--ease);position:relative;overflow:hidden;
+}
+.role-card::before{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(120deg, rgba(209,77,59,0) 0%, rgba(209,77,59,.08) 50%, rgba(209,77,59,0) 100%);
+  transform:translateX(-100%);transition:transform 800ms var(--ease);
+}
+.role-card:hover::before{transform:translateX(100%);}
+.role-card:hover{transform:translateY(-2px);box-shadow:0 14px 36px -16px rgba(20,30,18,.18);}
+.role-card.selected{border-color:var(--ink);background:var(--ink);color:#fff;}
+.role-card .ic{
+  width:38px;height:38px;border-radius:12px;background:var(--surface-2);
+  display:flex;align-items:center;justify-content:center;color:var(--ink);
+  flex:none;transition:transform 400ms var(--ease);
+}
+.role-card .ic svg{width:18px;height:18px;}
+.role-card:hover .ic{transform:rotate(-6deg) scale(1.05);}
+.role-card.selected .ic{background:rgba(255,255,255,.18);color:#fff;}
+.role-card .meta{flex:1;min-width:0;}
+.role-card .meta .t1{font-size:14px;font-weight:600;letter-spacing:.02em;}
+.role-card .meta .t2{font-size:11px;color:var(--ink-2);margin-top:2px;}
+.role-card.selected .meta .t2{color:rgba(255,255,255,.7);}
+.role-card .arr{font-size:16px;opacity:.4;transition:transform 400ms var(--ease);}
+.role-card:hover .arr{transform:translateX(3px);opacity:.7;}
+.role-card.selected .arr{opacity:1;}
+
+.form{display:flex;flex-direction:column;gap:8px;}
+.field{
+  background:rgba(255,255,255,.72);backdrop-filter:blur(16px);
+  border:1.5px solid rgba(20,25,18,.06);
+  border-radius:16px;padding:12px 16px;
+  display:flex;align-items:center;gap:10px;
+  transition:border-color 280ms var(--ease), background 280ms var(--ease), transform 280ms var(--ease);
+}
+.field:focus-within{
+  border-color:var(--ink);background:#fff;
+  transform:translateY(-1px);
+  box-shadow:0 12px 30px -16px rgba(20,30,18,.18);
+}
+.field .fic{
+  width:24px;height:24px;flex:none;display:flex;align-items:center;justify-content:center;
+  color:var(--ink-2);transition:color 280ms var(--ease);
+}
+.field:focus-within .fic{color:var(--ink);}
+.field .fic svg{width:16px;height:16px;}
+.field .lbl{font-size:10px;color:var(--ink-2);letter-spacing:.22em;flex:none;width:40px;font-weight:500;}
+.field input{
+  flex:1;border:none;outline:none;background:transparent;
+  font-size:15px;color:var(--ink);font-family:inherit;font-weight:500;
+  letter-spacing:.02em;
+}
+.field input::placeholder{color:var(--ink-3);}
+.field .send-code{
+  font-size:11px;color:var(--crimson);font-weight:600;cursor:pointer;letter-spacing:.05em;
+  padding:6px 10px;border-radius:10px;background:rgba(209,77,59,.08);
+  transition:all 240ms var(--ease);white-space:nowrap;
+}
+.field .send-code:hover{background:rgba(209,77,59,.16);}
+.field .send-code.disabled{color:var(--ink-3);background:var(--surface-2);cursor:not-allowed;}
+.btn{
+  border:none;cursor:pointer;font-family:inherit;font-weight:600;
+  letter-spacing:.04em;border-radius:20px;
+  transition:transform 220ms var(--ease), background 280ms var(--ease), color 280ms var(--ease);
+}
+.btn:active{transform:scale(.97);}
+.btn-primary{
+  background:var(--ink);color:#fff;padding:16px;font-size:15px;width:100%;
+  position:relative;overflow:hidden;
+}
+.btn-primary::before{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(120deg, transparent 30%, rgba(255,255,255,.18) 50%, transparent 70%);
+  transform:translateX(-100%);transition:transform 800ms var(--ease);
+}
+.btn-primary:hover::before{transform:translateX(100%);}
+.btn-primary:hover{background:var(--crimson);}
+.btn-ghost{
+  background:transparent;color:var(--ink-2);padding:12px;font-size:12px;width:100%;
+}
+.btn-ghost:hover{color:var(--ink);}
+.legal{font-size:11px;color:var(--ink-3);text-align:center;margin-top:6px;line-height:1.6;}
+.legal a{color:var(--ink-2);text-decoration:underline;text-underline-offset:2px;cursor:pointer;}
+.legal .agree-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px;}
+.legal .agree-row .chk{
+  width:16px;height:16px;border-radius:5px;border:1.5px solid var(--ink-3);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;
+  transition:all 240ms var(--ease);color:transparent;
+}
+.legal .agree-row .chk.on{background:var(--ink);border-color:var(--ink);color:#fff;}
+.legal .agree-row .chk svg{width:12px;height:12px;}
+.legal .agree-row span{font-size:11px;color:var(--ink-2);}
+
+/* ----- HOME ----- */
+.e-home{flex:1;display:flex;flex-direction:column;}
+.e-header{padding:10px 26px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px;}
+.e-header .e-id{display:flex;align-items:center;gap:12px;min-width:0;}
+.e-greet{font-size:11px;letter-spacing:.06em;color:var(--ink-2);transition:color 600ms var(--ease);line-height:1;}
+.elderly.is-songfeng .e-greet{color:rgba(255,255,255,.75);}
+.e-name{font-size:18px;font-weight:600;margin-top:3px;letter-spacing:-.01em;line-height:1.1;}
+.e-actions{display:flex;align-items:center;gap:8px;}
+.avatar{
+  width:38px;height:38px;border-radius:50%;overflow:hidden;
+  background:linear-gradient(135deg,#cdd5c2,#9aa893);
+  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:13px;
+  cursor:pointer;flex:none;transition:transform 240ms var(--ease), background 600ms var(--ease);
+}
+.avatar img{width:100%;height:100%;object-fit:cover;}
+.avatar:hover{transform:scale(1.06);}
+.elderly.is-songfeng .avatar{background:rgba(255,255,255,.18);}
+
+/* hero stage */
+.hero{flex:1;position:relative;margin:0 22px;display:flex;flex-direction:column;min-height:0;}
+.totem-stage{
+  height:200px;position:relative;border-radius:30px;overflow:hidden;
+  background:#EFF1EA;
+  transition:background 700ms var(--ease);
+}
+.elderly.is-songfeng .totem-stage{background:rgba(255,255,255,.10);}
+.totem-img, .totem-vid{
+  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  transition:opacity 700ms var(--ease), transform 700ms var(--ease), filter 700ms var(--ease);
+  opacity:0;transform:scale(1.06);filter:blur(16px) saturate(1.1);
+}
+.totem-img.show, .totem-vid.show{opacity:.95;transform:scale(1);filter:blur(0) saturate(1);}
+.totem-stage::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg, rgba(245,247,243,0) 50%, rgba(245,247,243,.9) 100%);
+  transition:background 700ms var(--ease);
+}
+.elderly.is-songfeng .totem-stage::after{
+  background:linear-gradient(180deg, rgba(209,77,59,0) 50%, rgba(209,77,59,.9) 100%);
+}
+.totem-tag{
+  position:absolute;left:18px;top:16px;font-size:10px;letter-spacing:.3em;
+  background:rgba(255,255,255,.7);padding:5px 10px;border-radius:10px;
+  backdrop-filter:blur(10px);color:var(--ink-2);font-weight:500;
+}
+.elderly.is-songfeng .totem-tag{background:rgba(255,255,255,.22);color:#fff;}
+
+/* slot machine */
+.angle-block{
+  display:flex;align-items:flex-start;justify-content:center;
+  height:96px;margin-top:6px;
+}
+.slot{
+  display:flex;align-items:flex-start;
+  font-weight:700;font-size:96px;line-height:1;
+  letter-spacing:-0.06em;font-feature-settings:"tnum";
+  color:var(--ink);transition:color 600ms var(--ease);
+}
+.elderly.is-songfeng .slot{color:#fff;}
+.slot .reel{width:54px;height:96px;overflow:hidden;position:relative;}
+.slot .strip{display:flex;flex-direction:column;transition: transform 700ms var(--ease);}
+.slot .strip span{height:96px;display:flex;align-items:center;justify-content:center;}
+.slot .deg{
+  font-size:38px;font-weight:500;margin-left:6px;margin-top:6px;color:var(--ink-2);
+  transition:color 400ms var(--ease);
+}
+.elderly.is-songfeng .slot .deg{
+  color:#FFD9CE;animation: blink 1.2s var(--ease) infinite;
+}
+@keyframes blink {0%,100%{opacity:1;} 50%{opacity:.45;}}
+.angle-cap{
+  text-align:center;font-size:11px;letter-spacing:.32em;color:var(--ink-2);
+  margin-top:6px;transition:color 600ms var(--ease);
+}
+.elderly.is-songfeng .angle-cap{color:rgba(255,255,255,.7);}
+.angle-cap b{font-weight:600;color:var(--ink);transition:color 600ms var(--ease);}
+.elderly.is-songfeng .angle-cap b{color:#fff;}
+
+/* scenes */
+.scenes{display:flex;gap:8px;padding:14px 22px 12px;}
+.scene{
+  flex:1;background:#fff;border-radius:22px;padding:14px;
+  cursor:pointer;position:relative;overflow:hidden;min-width:0;
+  transition: flex 600ms var(--ease), background-color 600ms var(--ease), color 600ms var(--ease);
+}
+.scene .num{font-size:10px;letter-spacing:.3em;color:var(--ink-3);font-weight:500;}
+.scene .name{font-size:17px;font-weight:600;margin-top:5px;letter-spacing:.02em;line-height:1.15;}
+.scene .meta{font-size:11px;color:var(--ink-2);margin-top:3px;letter-spacing:.02em;}
+.scene .pill{
+  margin-top:10px;font-size:10px;letter-spacing:.18em;font-weight:500;
+  display:inline-flex;align-items:center;gap:6px;color:var(--ink-2);
+}
+.scene .pill::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--ink-3);}
+.scene.active{flex:1.7;}
+.scene.tingquan.active{background:#EFEAE0;}
+.scene.songfeng.active{background:transparent;color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.32);}
+.elderly.is-songfeng .scene{background:rgba(255,255,255,.10);color:rgba(255,255,255,.75);backdrop-filter:blur(12px);}
+.elderly.is-songfeng .scene .num,
+.elderly.is-songfeng .scene .meta,
+.elderly.is-songfeng .scene .pill{color:rgba(255,255,255,.7);}
+.elderly.is-songfeng .scene .pill::before{background:rgba(255,255,255,.7);}
+.elderly.is-songfeng .scene.active{background:rgba(255,255,255,.18);color:#fff;}
+.elderly.is-songfeng .scene.active .num,
+.elderly.is-songfeng .scene.active .meta,
+.elderly.is-songfeng .scene.active .pill{color:rgba(255,255,255,.92);}
+.elderly.is-songfeng .scene.active .pill::before{background:#fff;}
+
+/* stand */
+.stand{
+  margin:0 22px 14px;padding:11px 13px 11px 20px;border-radius:24px;background:#fff;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  transition:background 600ms var(--ease), color 600ms var(--ease);
+}
+.elderly.is-songfeng .stand{background:rgba(255,255,255,.10);color:#fff;backdrop-filter:blur(8px);}
+.stand .txt .t1{font-size:14px;font-weight:600;letter-spacing:.02em;}
+.stand .txt .t2{font-size:11px;color:var(--ink-2);margin-top:2px;letter-spacing:.04em;}
+.elderly.is-songfeng .stand .txt .t2{color:rgba(255,255,255,.75);}
+.stand-btn{
+  width:56px;height:56px;border-radius:50%;background:#F1F4ED;
+  display:flex;align-items:center;justify-content:center;position:relative;
+  user-select:none;cursor:pointer;flex:none;
+  transition:transform 220ms var(--ease), background 400ms var(--ease);
+}
+.elderly.is-songfeng .stand-btn{background:rgba(255,255,255,.18);}
+.stand-btn.charged{transform:scale(.94);}
+.stand-btn .arrow{font-size:22px;font-weight:600;color:var(--ink);transition:color 400ms var(--ease);}
+.elderly.is-songfeng .stand-btn .arrow{color:#fff;}
+.stand-btn .ring{position:absolute;inset:-5px;}
+.stand-btn .ring circle.bg{stroke:#E6E9E1;}
+.elderly.is-songfeng .stand-btn .ring circle.bg{stroke:rgba(255,255,255,.25);}
+.stand-btn .ring circle.fg{
+  stroke:var(--crimson); stroke-linecap:round;
+  stroke-dasharray:226; stroke-dashoffset:226;
+  transform:rotate(-90deg);transform-origin:50% 50%;
+  transition:stroke-dashoffset 2000ms linear;
+}
+.stand-btn.pressing .ring circle.fg{ stroke-dashoffset:0;}
+.stand-btn.release-fast .ring circle.fg{
+  stroke-dashoffset:226 !important;transition:stroke-dashoffset 320ms var(--ease);
+}
+.elderly.is-songfeng .stand-btn .ring circle.fg{stroke:#FFD9CE;}
+
+/* ----- HEALTH PAGE ----- */
+.page-header{
+  padding:10px 26px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;
+}
+.page-title{font-size:20px;font-weight:600;letter-spacing:-0.01em;line-height:1.2;}
+.page-header .ph-actions{display:flex;align-items:center;gap:8px;}
+.icon-btn{
+  width:38px;height:38px;border-radius:12px;background:#fff;flex:none;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:all 240ms var(--ease);color:var(--ink);
+}
+.icon-btn:hover{background:var(--ink);color:#fff;}
+.elderly.is-songfeng .icon-btn{background:rgba(255,255,255,.18);color:#fff;}
+
+.scroll{
+  flex:1;overflow-y:auto;padding:0 22px 130px;
+  scrollbar-width:none;
+}
+/* extra padding when voice fab is showing in elderly */
+.elderly .scroll{padding-bottom:170px;}
+.scroll::-webkit-scrollbar{display:none;}
+
+.section-label{
+  font-size:10px;letter-spacing:.3em;color:var(--ink-2);font-weight:500;
+  margin:18px 4px 10px;text-transform:uppercase;
+}
+
+.health-card{
+  background:#fff;border-radius:24px;padding:18px 20px;margin-bottom:10px;
+}
+.health-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;}
+.kpi{display:flex;align-items:baseline;gap:6px;}
+.kpi .num{font-size:32px;font-weight:700;letter-spacing:-0.02em;font-feature-settings:"tnum";}
+.kpi .unit{font-size:13px;color:var(--ink-2);font-weight:500;}
+.kpi-trend{font-size:11px;color:var(--sage);background:rgba(125,142,126,.12);padding:4px 8px;border-radius:8px;font-weight:500;}
+.bar-row{display:flex;gap:4px;align-items:flex-end;height:48px;margin-top:6px;}
+.bar-row .bar{flex:1;background:var(--surface-2);border-radius:3px;}
+.bar-row .bar.hl{background:var(--ink);}
+
+.routine-list{background:#fff;border-radius:24px;padding:6px 14px;}
+.routine{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:13px 6px;border-bottom:1px solid var(--line);
+}
+.routine:last-child{border-bottom:none;}
+.routine .lt{display:flex;align-items:center;gap:12px;}
+.routine .ic{
+  width:38px;height:38px;border-radius:12px;background:var(--surface-2);
+  display:flex;align-items:center;justify-content:center;color:var(--ink);
+  flex:none;
+}
+.routine .lt .t1{font-size:14px;font-weight:500;}
+.routine .lt .t2{font-size:11px;color:var(--ink-2);margin-top:2px;}
+.routine .rt{font-size:13px;color:var(--ink-2);font-weight:500;font-feature-settings:"tnum";}
+
+/* ----- SETTINGS PAGE ----- */
+.profile-card{
+  background:#fff;border-radius:24px;padding:20px;margin-bottom:14px;
+  display:flex;align-items:center;gap:14px;
+}
+.profile-card .big-avatar{
+  width:56px;height:56px;border-radius:50%;overflow:hidden;
+  background:linear-gradient(135deg,#cdd5c2,#9aa893);
+  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:20px;flex:none;
+}
+.profile-card .big-avatar img{width:100%;height:100%;object-fit:cover;}
+.profile-card .pn{font-size:18px;font-weight:600;}
+.profile-card .pi{font-size:12px;color:var(--ink-2);margin-top:3px;}
+
+.list-card{background:#fff;border-radius:24px;padding:4px 14px;margin-bottom:10px;}
+.list-row{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:14px 6px;border-bottom:1px solid var(--line);cursor:pointer;
+  transition:background 200ms var(--ease);
+}
+.list-row:last-child{border-bottom:none;}
+.list-row:hover{background:rgba(0,0,0,.015);border-radius:14px;}
+.list-row .lt{display:flex;align-items:center;gap:12px;flex:1;min-width:0;}
+.list-row .ic{
+  width:36px;height:36px;border-radius:11px;background:var(--surface-2);
+  display:flex;align-items:center;justify-content:center;color:var(--ink);flex:none;
+}
+.list-row .label{font-size:14px;font-weight:500;}
+.list-row .val{font-size:12px;color:var(--ink-2);}
+.list-row .arr{color:var(--ink-3);font-size:18px;}
+
+/* switch */
+.switch{
+  width:44px;height:26px;border-radius:14px;background:var(--surface-2);
+  position:relative;cursor:pointer;flex:none;
+  transition:background 280ms var(--ease);
+}
+.switch::after{
+  content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;
+  border-radius:50%;background:#fff;
+  transition:left 280ms var(--ease);
+  box-shadow:0 2px 4px rgba(0,0,0,.15);
+}
+.switch.on{background:var(--ink);}
+.switch.on::after{left:21px;}
+
+/* slider */
+.slider{
+  height:6px;background:var(--surface-2);border-radius:3px;
+  position:relative;cursor:pointer;flex:1;
+}
+.slider .fill{
+  position:absolute;left:0;top:0;height:100%;background:var(--ink);
+  border-radius:3px;transition:width 280ms var(--ease);
+}
+.slider .knob{
+  position:absolute;top:50%;width:18px;height:18px;border-radius:50%;
+  background:#fff;transform:translate(-50%,-50%);
+  box-shadow:0 2px 6px rgba(0,0,0,.18), 0 0 0 2px var(--ink);
+  transition:left 280ms var(--ease);
+}
+
+/* bottom nav */
+.tab-nav{
+  position:absolute;left:14px;right:14px;bottom:14px;
+  background:rgba(255,255,255,.92);backdrop-filter:blur(20px);
+  border-radius:24px;padding:8px;
+  display:flex;gap:4px;z-index:30;
+  box-shadow:0 18px 48px -16px rgba(20,30,18,.18);
+}
+.elderly.is-songfeng .tab-nav{background:rgba(255,255,255,.16);backdrop-filter:blur(20px);}
+.tab-item{
+  flex:1;padding:10px 8px;border-radius:18px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  font-size:10px;color:var(--ink-2);font-weight:500;
+  transition:all 280ms var(--ease);
+}
+.elderly.is-songfeng .tab-item{color:rgba(255,255,255,.7);}
+.tab-item .ic{width:22px;height:22px;display:flex;align-items:center;justify-content:center;}
+.tab-item.active{background:var(--ink);color:#fff;}
+.elderly.is-songfeng .tab-item.active{background:rgba(255,255,255,.32);color:#fff;}
+
+/* toast */
+.toast{
+  position:absolute;left:50%;bottom:90px;transform:translateX(-50%) translateY(20px);
+  background:rgba(20,25,18,.92);color:#fff;padding:11px 18px;border-radius:20px;
+  font-size:12px;letter-spacing:.04em;opacity:0;transition:all 380ms var(--ease);
+  pointer-events:none;z-index:50;backdrop-filter:blur(12px);
+  white-space:nowrap;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* =====================================================
+   CAREGIVER (cool white)
+   ===================================================== */
+.care{background:#FAFBF7;transition:background 800ms var(--ease), color 800ms var(--ease);}
+.care.is-bleeding{
+  background:radial-gradient(130% 100% at 50% 20%, #E86A4A 0%, #D14D3B 55%, #B23A2A 100%);
+  color:#fff;
+}
+.care.is-bleeding .statusbar{color:#fff;}
+
+/* CARE LOGIN */
+.c-login{
+  flex:1;display:flex;flex-direction:column;justify-content:space-between;
+  padding:50px 32px 36px;
+  background:
+    radial-gradient(70% 50% at 100% 0%, rgba(125,142,126,.22) 0%, rgba(125,142,126,0) 60%),
+    radial-gradient(70% 50% at 0% 100%, rgba(209,77,59,.16) 0%, rgba(209,77,59,0) 60%),
+    #FAFBF7;
+}
+
+/* CARE HOME */
+.c-header{padding:10px 26px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;}
+.c-header > div:first-child{min-width:0;}
+.c-header .c-actions{display:flex;align-items:center;gap:8px;}
+.c-eyebrow{font-size:10px;letter-spacing:.32em;color:var(--ink-2);font-weight:500;transition:color 600ms var(--ease);line-height:1;}
+.care.is-bleeding .c-eyebrow{color:rgba(255,255,255,.7);}
+.c-name{font-size:20px;font-weight:600;margin-top:5px;letter-spacing:-.01em;line-height:1.1;}
+.pill{
+  padding:6px 12px;border-radius:16px;background:#EEF1E8;font-size:11px;color:var(--ink-2);
+  display:flex;align-items:center;gap:8px;letter-spacing:.05em;font-weight:500;cursor:pointer;
+  transition:background 600ms var(--ease), color 600ms var(--ease);
+}
+.pill .pdot{width:6px;height:6px;border-radius:50%;background:var(--sage);box-shadow:0 0 0 4px rgba(125,142,126,.18);}
+.care.is-bleeding .pill{background:rgba(255,255,255,.18);color:#fff;}
+.care.is-bleeding .pill .pdot{background:#fff;box-shadow:0 0 0 4px rgba(255,255,255,.25);}
+
+.hero-card{
+  margin:0 22px;border-radius:30px;background:#fff;
+  padding:20px 22px 16px;display:flex;flex-direction:column;position:relative;overflow:hidden;
+  flex:1;min-height:0;
+  transition:background 700ms var(--ease), color 700ms var(--ease);
+}
+.care.is-bleeding .hero-card{background:rgba(255,255,255,.12);backdrop-filter:blur(20px);color:#fff;}
+.hero-row{display:flex;justify-content:space-between;align-items:flex-start;}
+.hero-mode-lbl{font-size:10px;letter-spacing:.32em;color:var(--ink-2);font-weight:500;transition:color 600ms var(--ease);}
+.care.is-bleeding .hero-mode-lbl{color:rgba(255,255,255,.75);}
+.hero-mode{font-size:26px;font-weight:600;margin-top:5px;letter-spacing:-.01em;}
+.hero-sub{font-size:12px;color:var(--ink-2);margin-top:5px;letter-spacing:.03em;transition:color 600ms var(--ease);line-height:1.5;}
+.care.is-bleeding .hero-sub{color:rgba(255,255,255,.85);}
+.hero-tag{
+  font-size:11px;letter-spacing:.24em;color:var(--ink-3);font-weight:500;
+  background:var(--surface-2);padding:6px 10px;border-radius:10px;
+  transition:all 600ms var(--ease);
+}
+.care.is-bleeding .hero-tag{background:rgba(255,255,255,.2);color:#fff;}
+.chair-art{
+  flex:1;display:flex;align-items:center;justify-content:center;
+  position:relative;margin:6px -2px;border-radius:20px;overflow:hidden;
+}
+.chair-img{
+  width:100%;height:100%;object-fit:cover;position:absolute;inset:0;
+  transition:opacity 700ms var(--ease), filter 700ms var(--ease), transform 700ms var(--ease);
+}
+.chair-img.alt{opacity:0;transform:scale(1.04);}
+.care.is-bleeding .chair-img.base{opacity:0;}
+.care.is-bleeding .chair-img.alt{opacity:1;transform:scale(1);}
+
+.wave-card{
+  margin:12px 22px 0;background:#fff;border-radius:22px;padding:14px 18px 10px;
+  transition:background 700ms var(--ease), color 700ms var(--ease);
+}
+.care.is-bleeding .wave-card{background:rgba(255,255,255,.12);color:#fff;backdrop-filter:blur(20px);}
+.wave-head{display:flex;justify-content:space-between;align-items:baseline;}
+.wave-title{font-size:10px;letter-spacing:.3em;color:var(--ink-2);font-weight:500;transition:color 600ms var(--ease);}
+.care.is-bleeding .wave-title{color:rgba(255,255,255,.75);}
+.wave-vals{display:flex;gap:14px;font-size:10px;color:var(--ink-2);letter-spacing:.05em;font-weight:500;transition:color 600ms var(--ease);}
+.care.is-bleeding .wave-vals{color:rgba(255,255,255,.85);}
+.wave-vals b{color:var(--ink);font-weight:700;font-size:15px;margin-left:4px;letter-spacing:-.02em;font-feature-settings:"tnum";transition:color 600ms var(--ease);}
+.care.is-bleeding .wave-vals b{color:#fff;}
+.wave-svg{width:100%;height:64px;display:block;margin-top:6px;}
+
+.mini-actions{display:flex;gap:8px;margin:10px 22px 0;}
+.mini-actions .a{
+  flex:1;background:#fff;border-radius:18px;padding:11px 14px;font-size:13px;font-weight:500;
+  display:flex;justify-content:space-between;align-items:center;letter-spacing:.02em;cursor:pointer;
+  transition:all 280ms var(--ease);
+}
+.mini-actions .a:hover{transform:translateY(-1px);}
+.care.is-bleeding .mini-actions .a{background:rgba(255,255,255,.12);color:#fff;backdrop-filter:blur(20px);}
+.mini-actions .a .arr{opacity:.4;font-size:16px;}
+
+/* ALERTS */
+.alert-list{display:flex;flex-direction:column;gap:8px;}
+.alert-card{
+  background:#fff;border-radius:22px;padding:16px 18px;
+  border-left:3px solid var(--sage);cursor:pointer;
+  transition:transform 240ms var(--ease);
+}
+.alert-card.crimson{border-color:var(--crimson);}
+.alert-card.warn{border-color:var(--warning);}
+.alert-card:hover{transform:translateX(2px);}
+.alert-card .ahead{display:flex;justify-content:space-between;align-items:center;}
+.alert-card .tag{
+  font-size:9px;letter-spacing:.28em;font-weight:600;
+  padding:4px 8px;border-radius:8px;text-transform:uppercase;
+  background:rgba(125,142,126,.15);color:var(--sage);
+}
+.alert-card.crimson .tag{background:rgba(209,77,59,.12);color:var(--crimson);}
+.alert-card.warn .tag{background:rgba(229,162,59,.14);color:var(--warning);}
+.alert-card .time{font-size:11px;color:var(--ink-3);font-weight:500;}
+.alert-card .alead{font-size:15px;font-weight:600;margin-top:8px;letter-spacing:.02em;}
+.alert-card .adesc{font-size:12px;color:var(--ink-2);margin-top:4px;line-height:1.5;}
+
+/* REPORTS */
+.report-hero{
+  background:linear-gradient(135deg, #1B1F1A 0%, #3A4538 100%);
+  border-radius:26px;padding:22px;color:#fff;margin-bottom:12px;position:relative;overflow:hidden;
+}
+.report-hero::before{
+  content:"";position:absolute;right:-30px;top:-30px;width:160px;height:160px;border-radius:50%;
+  background:radial-gradient(circle,rgba(209,77,59,.4) 0%,rgba(209,77,59,0) 70%);
+}
+.report-hero .rt1{font-size:10px;letter-spacing:.32em;opacity:.7;font-weight:500;}
+.report-hero .rscore{font-size:56px;font-weight:700;letter-spacing:-0.04em;margin-top:6px;font-feature-settings:"tnum";}
+.report-hero .rdesc{font-size:12px;opacity:.75;margin-top:4px;line-height:1.5;max-width:240px;}
+
+.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.metric-card{
+  background:#fff;border-radius:20px;padding:14px 16px;
+}
+.metric-card .ml{font-size:10px;letter-spacing:.26em;color:var(--ink-2);font-weight:500;}
+.metric-card .mv{font-size:22px;font-weight:700;margin-top:4px;letter-spacing:-0.02em;font-feature-settings:"tnum";}
+.metric-card .ms{font-size:11px;color:var(--ink-2);margin-top:2px;}
+
+.spark{height:32px;display:flex;align-items:flex-end;gap:2px;margin-top:8px;}
+.spark .b{flex:1;background:var(--ink);border-radius:2px;opacity:.85;}
+
+/* FAMILY */
+.family-card{
+  background:#fff;border-radius:22px;padding:14px;display:flex;align-items:center;gap:14px;margin-bottom:8px;cursor:pointer;
+  transition:transform 240ms var(--ease);
+}
+.family-card:hover{transform:translateX(2px);}
+.family-card .fav{
+  width:46px;height:46px;border-radius:14px;overflow:hidden;
+  background:linear-gradient(135deg,#cdd5c2,#9aa893);
+  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:16px;flex:none;
+}
+.family-card .fav img{width:100%;height:100%;object-fit:cover;}
+.family-card .fav.b{background:linear-gradient(135deg,#E8B398,#D14D3B);}
+.family-card .fav.c{background:linear-gradient(135deg,#9CB1D4,#5C7AAB);}
+.family-card .fc-meta{flex:1;min-width:0;}
+.family-card .fn{font-size:15px;font-weight:600;}
+.family-card .fr{font-size:11px;color:var(--ink-2);margin-top:2px;}
+.family-card .ftag{font-size:10px;letter-spacing:.2em;color:var(--ink-3);font-weight:500;}
+
+/* CARE TAB */
+.care .tab-nav{background:rgba(255,255,255,.92);backdrop-filter:blur(20px);}
+.care.is-bleeding .tab-nav{background:rgba(255,255,255,.16);}
+.care.is-bleeding .tab-item{color:rgba(255,255,255,.7);}
+.care.is-bleeding .tab-item.active{background:rgba(255,255,255,.32);color:#fff;}
+
+/* BOTTOM SHEET */
+.scrim{
+  position:absolute;inset:0;backdrop-filter:blur(0);background:rgba(20,25,18,0);
+  transition:all 600ms var(--ease);pointer-events:none;z-index:40;
+}
+.scrim.show{backdrop-filter:blur(18px);background:rgba(20,25,18,.28);pointer-events:auto;}
+.sheet{
+  position:absolute;left:0;right:0;bottom:0;
+  transform:translateY(110%) rotate(2deg);
+  background:rgba(255,255,255,.92);backdrop-filter:blur(24px);
+  border-top-left-radius:36px;border-top-right-radius:36px;
+  padding:26px 26px 30px;z-index:45;
+  transition:transform 700ms var(--ease);
+  box-shadow:0 -20px 80px -10px rgba(0,0,0,.28);
+}
+.sheet.show{transform:translateY(0) rotate(0);}
+.sheet::before{
+  content:"";position:absolute;top:10px;left:50%;transform:translateX(-50%);
+  width:42px;height:4px;border-radius:2px;background:#C7CDC0;
+}
+.sheet .stack{
+  position:absolute;top:-14px;left:14px;right:14px;height:32px;
+  background:rgba(255,255,255,.62);backdrop-filter:blur(20px);
+  border-radius:24px;z-index:-1;transform:rotate(-1.5deg);
+  box-shadow:0 -10px 30px rgba(0,0,0,.08);
+}
+.sheet .stack2{
+  position:absolute;top:-26px;left:30px;right:30px;height:24px;
+  background:rgba(255,255,255,.42);backdrop-filter:blur(20px);
+  border-radius:20px;z-index:-2;transform:rotate(-3deg);
+}
+.sheet, .sheet *{color:var(--ink);}
+.sheet h3{margin:8px 0 4px;font-size:18px;font-weight:600;letter-spacing:-.01em;color:var(--ink);}
+.sheet .desc{color:var(--ink-2) !important;}
+.sheet li{color:var(--ink) !important;}
+.sheet .alert-tag, .sheet .alert-tag *{color:#fff !important;}
+.sheet .primary, .sheet .primary *{color:#fff !important;}
+.sheet .alert-tag{
+  display:inline-block;background:var(--crimson);color:#fff;
+  font-size:10px;letter-spacing:.28em;padding:5px 12px;border-radius:12px;margin-top:8px;font-weight:600;
+}
+.sheet .desc{font-size:12px;color:var(--ink-2);margin-top:10px;line-height:1.6;}
+.sheet ul{padding-left:0;list-style:none;margin:14px 0 0;}
+.sheet li{
+  padding:11px 14px;background:rgba(241,244,237,.7);border-radius:14px;font-size:12px;
+  margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;letter-spacing:.02em;
+}
+.sheet li .ok{
+  width:18px;height:18px;border-radius:50%;background:var(--sage);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:10px;flex:none;margin-top:1px;
+}
+.sheet .actions{display:flex;gap:10px;margin-top:14px;}
+.sheet .btn-sheet{
+  flex:1;padding:14px;border-radius:18px;font-size:14px;font-weight:600;
+  text-align:center;cursor:pointer;border:none;letter-spacing:.04em;
+  transition:transform 200ms var(--ease);font-family:inherit;
+}
+.sheet .btn-sheet:active{transform:scale(.97);}
+.sheet .primary{background:var(--crimson);color:#fff;}
+.sheet .ghost{background:rgba(20,25,18,.06);color:var(--ink);}
+
+/* DEMO CONTROLS */
+.controls{
+  display:flex;gap:10px;flex-wrap:wrap;justify-content:center;align-items:center;margin-top:8px;
+}
+.controls button{
+  background:transparent;color:var(--ink);border:1px solid rgba(20,25,18,.18);
+  padding:11px 18px;border-radius:999px;
+  font-size:12px;cursor:pointer;letter-spacing:.06em;font-weight:500;font-family:inherit;
+  transition:all 280ms var(--ease);
+}
+.controls button:hover{border-color:var(--crimson);color:var(--crimson);transform:translateY(-1px);}
+.controls .hint{font-size:11px;color:var(--ink-2);margin-left:6px;letter-spacing:.05em;}
+
+@keyframes haptic{0%,100%{transform:translateX(0);}25%{transform:translateX(-2px);}50%{transform:translateX(2px);}75%{transform:translateX(-1px);}}
+.haptic{animation: haptic 220ms var(--ease);}
+
+/* =====================================================
+   PRODUCTION-LEVEL COMPONENTS
+   ===================================================== */
+
+/* Voice FAB on elderly home */
+.voice-fab{
+  position:absolute;right:18px;bottom:96px;z-index:32;
+  width:64px;height:64px;border-radius:50%;
+  background:var(--ink);color:#fff;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  box-shadow:0 18px 40px -12px rgba(20,30,18,.5);
+  transition:transform 240ms var(--ease), background 320ms var(--ease);
+}
+.voice-fab:hover{transform:scale(1.05);}
+.voice-fab:active{transform:scale(.95);}
+.voice-fab svg{width:26px;height:26px;}
+.voice-fab::after{
+  content:"";position:absolute;inset:-4px;border-radius:50%;
+  border:1.5px solid var(--ink);opacity:0;
+  animation:fab-pulse 2.4s var(--ease) infinite;
+}
+.elderly.is-songfeng .voice-fab{background:#fff;color:var(--crimson);}
+.elderly.is-songfeng .voice-fab::after{border-color:#fff;}
+@keyframes fab-pulse{
+  0%{opacity:0;transform:scale(.96);}
+  50%{opacity:.4;transform:scale(1.08);}
+  100%{opacity:0;transform:scale(1.16);}
+}
+
+/* Voice listening overlay sheet */
+.voice-sheet{
+  position:absolute;left:14px;right:14px;bottom:14px;
+  background:rgba(20,25,18,.94);backdrop-filter:blur(28px);color:#fff;
+  border-radius:30px;padding:24px 24px 22px;z-index:55;
+  transform:translateY(110%);opacity:0;pointer-events:none;
+  transition:all 600ms var(--ease);
+  box-shadow:0 -28px 80px -10px rgba(0,0,0,.4);
+}
+.voice-sheet.show{transform:translateY(0);opacity:1;pointer-events:auto;}
+.voice-sheet .vh{display:flex;align-items:center;justify-content:space-between;}
+.voice-sheet .vh .vt{font-size:11px;letter-spacing:.32em;color:rgba(255,255,255,.6);font-weight:500;}
+.voice-sheet .vh .vc{
+  width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,.12);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;
+}
+.voice-sheet .vmsg{
+  font-size:22px;font-weight:600;letter-spacing:-.01em;line-height:1.4;margin:14px 0 8px;
+  min-height:62px;
+}
+.voice-sheet .vmsg .blink{display:inline-block;width:2px;height:22px;background:var(--crimson);vertical-align:middle;margin-left:4px;animation:vblink 1s steps(2) infinite;}
+@keyframes vblink{0%,100%{opacity:1;}50%{opacity:0;}}
+.voice-sheet .vbars{
+  display:flex;align-items:flex-end;justify-content:center;gap:4px;height:48px;margin:12px 0 6px;
+}
+.voice-sheet .vbars .b{
+  width:5px;background:#fff;border-radius:2px;
+  animation: vamp 900ms var(--ease) infinite;
+}
+.voice-sheet .vbars .b:nth-child(1){animation-delay:.0s;height:30%;}
+.voice-sheet .vbars .b:nth-child(2){animation-delay:.1s;height:55%;}
+.voice-sheet .vbars .b:nth-child(3){animation-delay:.2s;height:80%;}
+.voice-sheet .vbars .b:nth-child(4){animation-delay:.3s;height:60%;}
+.voice-sheet .vbars .b:nth-child(5){animation-delay:.15s;height:90%;}
+.voice-sheet .vbars .b:nth-child(6){animation-delay:.05s;height:50%;}
+.voice-sheet .vbars .b:nth-child(7){animation-delay:.25s;height:75%;}
+.voice-sheet .vbars .b:nth-child(8){animation-delay:.18s;height:40%;}
+.voice-sheet .vbars .b:nth-child(9){animation-delay:.07s;height:65%;}
+.voice-sheet .vbars .b:nth-child(10){animation-delay:.22s;height:35%;}
+@keyframes vamp{
+  0%,100%{transform:scaleY(.4);opacity:.55;}
+  50%{transform:scaleY(1.1);opacity:1;}
+}
+.voice-sheet .vhint{font-size:11px;color:rgba(255,255,255,.55);text-align:center;letter-spacing:.05em;margin-top:6px;}
+.voice-sheet .vchips{display:flex;gap:6px;margin-top:14px;flex-wrap:wrap;}
+.voice-sheet .vc-chip{
+  background:rgba(255,255,255,.12);color:#fff;border:none;padding:9px 14px;border-radius:14px;
+  font-size:12px;cursor:pointer;font-family:inherit;letter-spacing:.04em;font-weight:500;
+  transition:background 220ms var(--ease);
+}
+.voice-sheet .vc-chip:hover{background:rgba(255,255,255,.22);}
+
+/* Segmented tab bar */
+.seg-tabs{
+  display:flex;background:#fff;border-radius:16px;padding:4px;gap:2px;margin-bottom:10px;
+}
+.seg-tab{
+  flex:1;padding:9px 12px;border-radius:12px;cursor:pointer;
+  font-size:12px;font-weight:500;text-align:center;color:var(--ink-2);letter-spacing:.04em;
+  transition:all 280ms var(--ease);
+}
+.seg-tab.active{background:var(--ink);color:#fff;}
+
+/* Compact tile grid */
+.tile-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.tile{
+  background:#fff;border-radius:18px;padding:14px;cursor:pointer;
+  transition:transform 240ms var(--ease);
+}
+.tile:hover{transform:translateY(-2px);}
+.tile .tlbl{font-size:10px;letter-spacing:.26em;color:var(--ink-2);font-weight:500;}
+.tile .tval{font-size:20px;font-weight:700;margin-top:6px;letter-spacing:-.02em;font-feature-settings:"tnum";}
+.tile .tval .u{font-size:11px;color:var(--ink-2);font-weight:500;margin-left:4px;}
+.tile .tsub{font-size:11px;color:var(--ink-2);margin-top:2px;}
+.tile .tdot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--sage);margin-right:5px;}
+.tile.warn .tdot{background:var(--warning);}
+.tile.crimson .tdot{background:var(--crimson);}
+
+/* Timeline */
+.tline{margin:0;padding:0 0 0 18px;list-style:none;border-left:1.5px solid var(--line);}
+.tline li{
+  position:relative;padding:0 0 18px 16px;font-size:13px;line-height:1.5;
+}
+.tline li::before{
+  content:"";position:absolute;left:-24px;top:4px;width:10px;height:10px;border-radius:50%;
+  background:#fff;border:2px solid var(--ink-3);
+}
+.tline li.done::before{background:var(--sage);border-color:var(--sage);}
+.tline li.alert::before{background:var(--crimson);border-color:var(--crimson);}
+.tline li .tt{font-size:11px;color:var(--ink-2);letter-spacing:.05em;}
+.tline li .tt b{color:var(--ink);font-weight:600;font-feature-settings:"tnum";margin-right:6px;}
+.tline li .ttitle{font-weight:600;font-size:14px;margin-top:2px;letter-spacing:.02em;}
+.tline li .tdesc{color:var(--ink-2);font-size:12px;margin-top:3px;}
+
+/* HUD panel rows (live chair status) */
+.hud{display:flex;flex-direction:column;gap:8px;}
+.hud-row{
+  background:#fff;border-radius:18px;padding:13px 16px;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+}
+.hud-row .hl{display:flex;align-items:center;gap:11px;flex:1;min-width:0;}
+.hud-row .hic{
+  width:34px;height:34px;border-radius:11px;background:var(--surface-2);
+  display:flex;align-items:center;justify-content:center;flex:none;
+}
+.hud-row .hic svg{width:16px;height:16px;}
+.hud-row .ht1{font-size:13px;font-weight:600;letter-spacing:.02em;}
+.hud-row .ht2{font-size:11px;color:var(--ink-2);margin-top:2px;}
+.hud-row .hv{font-size:18px;font-weight:700;font-feature-settings:"tnum";letter-spacing:-0.02em;}
+.hud-row .hv .u{font-size:11px;color:var(--ink-2);font-weight:500;margin-left:3px;}
+.hud-row.heat .hic{background:rgba(209,77,59,.12);color:var(--crimson);}
+.hud-row.heat .hv{color:var(--crimson);}
+
+/* Notification dropdown */
+.notify-pop{
+  position:absolute;top:64px;right:14px;left:14px;max-width:340px;margin-left:auto;
+  background:rgba(255,255,255,.96);backdrop-filter:blur(24px);
+  border-radius:22px;padding:14px;z-index:55;
+  box-shadow:0 28px 70px -16px rgba(20,30,18,.28);
+  opacity:0;transform:translateY(-12px) scale(.96);pointer-events:none;
+  transition:all 320ms var(--ease);max-height:540px;overflow-y:auto;
+}
+.notify-pop.show{opacity:1;transform:translateY(0) scale(1);pointer-events:auto;}
+.notify-pop::-webkit-scrollbar{display:none;}
+.notify-pop .nh{display:flex;align-items:center;justify-content:space-between;padding:4px 8px 10px;}
+.notify-pop .nh .nt{font-size:13px;font-weight:600;letter-spacing:.02em;}
+.notify-pop .nh .na{font-size:11px;color:var(--crimson);font-weight:600;cursor:pointer;letter-spacing:.04em;}
+.nitem{
+  display:flex;align-items:flex-start;gap:10px;padding:11px 8px;border-radius:14px;cursor:pointer;
+  transition:background 200ms var(--ease);
+}
+.nitem:hover{background:var(--surface-2);}
+.nitem .nic{
+  width:32px;height:32px;border-radius:10px;background:var(--surface-2);flex:none;
+  display:flex;align-items:center;justify-content:center;
+}
+.nitem.crimson .nic{background:rgba(209,77,59,.12);color:var(--crimson);}
+.nitem.warn .nic{background:rgba(229,162,59,.14);color:var(--warning);}
+.nitem.sage .nic{background:rgba(125,142,126,.14);color:var(--sage);}
+.nitem .nic svg{width:14px;height:14px;}
+.nitem .nb{flex:1;min-width:0;}
+.nitem .nb1{font-size:13px;font-weight:600;letter-spacing:.02em;}
+.nitem .nb2{font-size:11px;color:var(--ink-2);margin-top:2px;line-height:1.45;}
+.nitem .nt{font-size:10px;color:var(--ink-3);margin-top:3px;letter-spacing:.04em;}
+.nitem.unread{background:rgba(209,77,59,.04);}
+.nitem.unread::after{
+  content:"";display:block;width:6px;height:6px;border-radius:50%;background:var(--crimson);align-self:center;flex:none;
+}
+
+/* Notification bell */
+.bell{
+  width:38px;height:38px;border-radius:12px;background:#fff;flex:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;color:var(--ink);position:relative;
+  transition:all 240ms var(--ease);
+}
+.bell:hover{background:var(--ink);color:#fff;}
+.bell svg{width:16px;height:16px;}
+.bell .badge{
+  position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--crimson);
+  border:2px solid #fff;
+}
+.care.is-bleeding .bell{background:rgba(255,255,255,.18);color:#fff;}
+.care.is-bleeding .bell .badge{border-color:#D14D3B;}
+
+/* Permissions block (member detail) */
+.perm-row{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:12px 6px;border-bottom:1px solid var(--line);
+}
+.perm-row:last-child{border-bottom:none;}
+.perm-row .pl1{font-size:13px;font-weight:500;letter-spacing:.02em;}
+.perm-row .pl2{font-size:11px;color:var(--ink-2);margin-top:2px;}
+
+/* Diagnostic LED rows */
+.diag-row{
+  background:#fff;border-radius:18px;padding:14px 16px;margin-bottom:8px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.diag-row .dl{display:flex;align-items:center;gap:11px;flex:1;min-width:0;}
+.diag-row .led{
+  width:8px;height:8px;border-radius:50%;background:var(--sage);
+  box-shadow:0 0 0 4px rgba(125,142,126,.18);flex:none;
+  animation:led-glow 2.4s var(--ease) infinite;
+}
+.diag-row.warn .led{background:var(--warning);box-shadow:0 0 0 4px rgba(229,162,59,.16);}
+.diag-row.crimson .led{background:var(--crimson);box-shadow:0 0 0 4px rgba(209,77,59,.18);}
+@keyframes led-glow{0%,100%{box-shadow:0 0 0 4px rgba(125,142,126,.18);}50%{box-shadow:0 0 0 6px rgba(125,142,126,.05);}}
+.diag-row .dt1{font-size:13px;font-weight:600;}
+.diag-row .dt2{font-size:11px;color:var(--ink-2);margin-top:2px;font-feature-settings:"tnum";}
+.diag-row .dv{font-size:11px;color:var(--ink-3);font-weight:500;letter-spacing:.04em;}
+
+/* Pressed bar (segmented) */
+.subnav{padding:4px 22px 8px;}
+
+/* Sub-page header (with back) */
+.sub-header{padding:10px 18px 12px;display:flex;align-items:center;gap:8px;}
+.back-btn{
+  width:38px;height:38px;border-radius:12px;background:#fff;cursor:pointer;flex:none;
+  display:flex;align-items:center;justify-content:center;color:var(--ink);
+  transition:all 240ms var(--ease);
+}
+.back-btn:hover{background:var(--ink);color:#fff;}
+.back-btn svg{width:18px;height:18px;}
+.sub-header .stitle{font-size:18px;font-weight:600;letter-spacing:-.01em;flex:1;}
+.sub-header .sright{display:flex;align-items:center;gap:8px;flex:none;}
+
+/* Doctor card */
+.doc-card{
+  background:linear-gradient(135deg,#1B1F1A 0%,#3A4538 100%);color:#fff;
+  border-radius:22px;padding:18px;margin-bottom:10px;display:flex;align-items:center;gap:14px;
+  position:relative;overflow:hidden;
+}
+.doc-card::before{
+  content:"";position:absolute;right:-30px;top:-30px;width:120px;height:120px;border-radius:50%;
+  background:radial-gradient(circle,rgba(125,142,126,.5) 0%,rgba(125,142,126,0) 70%);
+}
+.doc-card .dav{
+  width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,#C8D2C3,#7D8E7E);
+  display:flex;align-items:center;justify-content:center;font-weight:600;font-size:18px;flex:none;
+  z-index:1;overflow:hidden;background-size:cover;background-position:center;
+}
+.doc-card .dav img{width:100%;height:100%;object-fit:cover;}
+.doc-card .dn{font-size:15px;font-weight:600;}
+.doc-card .ds{font-size:11px;opacity:.7;margin-top:3px;letter-spacing:.05em;}
+.doc-card .dbtn{
+  background:#fff;color:var(--ink);border:none;padding:9px 14px;border-radius:12px;
+  font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;letter-spacing:.04em;z-index:1;
+}
+
+/* Heart heat gauge */
+.gauge-card{
+  background:#fff;border-radius:22px;padding:18px 20px 16px;margin-bottom:10px;
+}
+.gauge-card .gh{display:flex;justify-content:space-between;align-items:flex-start;}
+.gauge-svg{width:100%;height:64px;display:block;margin-top:8px;}
+
+/* Sleep waveform */
+.sleep-card{
+  background:#fff;border-radius:22px;padding:18px 20px 16px;margin-bottom:10px;
+}
+.sleep-bars{display:flex;align-items:flex-end;gap:3px;height:50px;margin-top:8px;}
+.sleep-bars .sb{flex:1;border-radius:2px;}
+.sleep-bars .sb.deep{background:var(--ink);}
+.sleep-bars .sb.light{background:var(--sage);}
+.sleep-bars .sb.rem{background:#9CB1D4;}
+.sleep-bars .sb.awake{background:var(--surface-2);}
+
+/* Med reminder */
+.med-row{
+  background:#fff;border-radius:18px;padding:13px 16px;margin-bottom:8px;
+  display:flex;align-items:center;gap:12px;
+}
+.med-row .mc{
+  width:38px;height:38px;border-radius:11px;background:rgba(209,77,59,.1);color:var(--crimson);
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex:none;
+}
+.med-row .mn{font-size:13px;font-weight:600;}
+.med-row .mt{font-size:11px;color:var(--ink-2);margin-top:2px;}
+.med-row .mck{
+  width:26px;height:26px;border-radius:50%;background:var(--surface-2);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex:none;
+  transition:all 240ms var(--ease);
+}
+.med-row .mck.done{background:var(--sage);color:#fff;}
+.med-row .mck svg{width:14px;height:14px;}
+
+/* Onboarding pair card */
+.pair-card{
+  background:linear-gradient(135deg,#F5F7F3 0%,#E8ECDF 100%);
+  border-radius:22px;padding:18px;margin-bottom:10px;
+  display:flex;align-items:center;gap:14px;
+}
+.pair-card .pic{
+  width:46px;height:46px;border-radius:14px;background:#fff;
+  display:flex;align-items:center;justify-content:center;flex:none;color:var(--ink);
+}
+.pair-card .pn{font-size:14px;font-weight:600;}
+.pair-card .ps{font-size:11px;color:var(--ink-2);margin-top:3px;}
+.pair-card .pdone{font-size:11px;color:var(--sage);font-weight:600;letter-spacing:.04em;}
+
+/* ICONS via inline svg sized */
+.ic svg{width:18px;height:18px;}
+.tab-item .ic svg{width:20px;height:20px;}
+</style>
+</head>
+<body>
+
+<div class="brand-line">SONG·YI · INTELLIGENT CHAIR · DUAL-END APP</div>
+
+<div class="stage">
+
+  <!-- ============================================================ -->
+  <!-- ELDERLY DEVICE                                                -->
+  <!-- ============================================================ -->
+  <div class="device-wrap">
+    <div class="device-label">长者控制端</div>
+    <div class="device">
+      <div class="screen">
+        <div class="app elderly" id="elderly">
+          <div class="statusbar">
+            <span>9:41</span>
+            <div class="right">
+              <span class="sb-ic" data-tip="信号 · 满格"><svg viewBox="0 0 14 10" fill="currentColor"><rect x="0" y="7" width="2" height="3" rx="0.5"/><rect x="3" y="5" width="2" height="5" rx="0.5"/><rect x="6" y="3" width="2" height="7" rx="0.5"/><rect x="9" y="0" width="2" height="10" rx="0.5"/></svg></span>
+              <span class="sb-ic" data-tip="WiFi · 家庭"><svg viewBox="0 0 14 10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M1 4.5C2.6 3 4.6 2 7 2s4.4 1 6 2.5"/><path d="M3 6.7C4.1 5.7 5.5 5 7 5s2.9.7 4 1.7"/><circle cx="7" cy="9" r="0.8" fill="currentColor"/></svg></span>
+              <span class="sb-bat" data-tip="电量 · 65%"><span class="bb"></span><span class="bn"></span></span>
+            </div>
+          </div>
+
+          <!-- LOGIN PAGE -->
+          <div class="page e-page-login active" data-page="e-login">
+            <div class="e-login">
+              <div class="login-bg"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+
+              <div class="login-hero">
+                <video autoplay loop muted playsinline preload="auto"
+                  poster="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473397043-vqsupd-Gemini_Generated_Image_wz04wz04wz04wz04.png">
+                  <source src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/videos/2026-06-03/1780473449779-0g05k7-A_photorealistic_D_animation.mp4" type="video/mp4">
+                </video>
+                <span class="h-tag">SONG·YI · INTELLIGENT CHAIR</span>
+                <div class="h-cap">
+                  <div class="hh">让椅子<br/>记住每一次安稳</div>
+                  <div class="hs">脊柱保护 · 体征监测 · 一键助起</div>
+                </div>
+              </div>
+
+              <div class="login-body">
+                <div class="brand-mini">
+                  <div class="logo">松</div>
+                  <div class="blogo">SONG·YI · 松颐智慧家</div>
+                </div>
+                <div class="login-h">您好，<span class="accent">王伯伯</span><br/>欢迎回家</div>
+                <div class="login-sub">轻轻坐下，让椅子读懂您的姿态、节律与呼吸。</div>
+
+                <div class="role">
+                  <div class="role-card selected" data-role="elderly">
+                    <div class="ic">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg>
+                    </div>
+                    <div class="meta"><div class="t1">长者本人使用</div><div class="t2">大字模式 · 简化操作</div></div>
+                    <span class="arr">›</span>
+                  </div>
+                  <div class="role-card" data-role="caregiver">
+                    <div class="ic">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 11a3 3 0 11.001-6.001A3 3 0 019 11zm6 1a2.5 2.5 0 110-5 2.5 2.5 0 010 5zM3 20c0-3 3-5 6-5s6 2 6 5M14 20c0-2.2 2.2-4 4-4s4 1.8 4 4"/></svg>
+                    </div>
+                    <div class="meta"><div class="t1">远程监护子女</div><div class="t2">体征监测 · 紧急呼叫</div></div>
+                    <span class="arr">›</span>
+                  </div>
+                </div>
+
+                <div class="form">
+                  <div class="field">
+                    <span class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></svg></span>
+                    <input id="ePhone" type="tel" placeholder="138 0013 8000" value="138 0013 8000"/>
+                  </div>
+                  <div class="field">
+                    <span class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 11h2M11 11h2M15 11h2"/></svg></span>
+                    <input id="eCode" type="tel" placeholder="—— —— ——"/>
+                    <span class="send-code" id="eSendCode">获取验证码</span>
+                  </div>
+                </div>
+
+                <button class="btn btn-primary" id="eLoginBtn">
+                  进入家庭
+                </button>
+
+                <div class="legal">
+                  <div class="agree-row">
+                    <span class="chk on" id="eAgree"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 12l5 5L20 7"/></svg></span>
+                    <span>我已阅读并同意 <a>用户协议</a> 与 <a>隐私政策</a></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- HOME PAGE -->
+          <div class="page" data-page="e-home">
+            <div class="e-home">
+              <div class="e-header">
+                <div class="e-id">
+                  <div class="avatar" data-go-page="e-settings"><img src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473134454-jxlhtb-Gemini_Generated_Image_mbebsdmbebsdmbeb.png" alt=""/></div>
+                  <div>
+                    <div class="e-greet">下午好</div>
+                    <div class="e-name">王伯伯</div>
+                  </div>
+                </div>
+                <div class="e-actions">
+                  <div class="kebab" data-menu="eMenu">
+                    <span class="kdot"></span><span class="kdot"></span><span class="kdot"></span>
+                  </div>
+                </div>
+                <div class="menu-pop" id="eMenu">
+                  <div class="mi" data-toast="正在与小红视频通话">
+                    <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg></div>
+                    呼叫女儿
+                  </div>
+                  <div class="mi" data-toast="语音助手已唤醒">
+                    <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="9" y="3" width="6" height="13" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg></div>
+                    唤醒语音助手
+                  </div>
+                  <div class="mi" data-go-page="e-settings">
+                    <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 11-14 0 7 7 0 0114 0z"/></svg></div>
+                    设置
+                  </div>
+                  <div class="sep"></div>
+                  <div class="mi danger" data-toast="紧急求助已发出 · 正在通知 3 位家人">
+                    <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l9 4v6c0 5-4 9-9 10-5-1-9-5-9-10V6l9-4z"/></svg></div>
+                    一键紧急求助
+                  </div>
+                </div>
+              </div>
+
+              <div class="hero">
+                <div class="totem-stage">
+                  <div class="totem-tag" id="totemTag">SCENE · 01</div>
+                  <img id="totem-guanyun"  class="totem-img show" alt="" src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473049967-lszkrz-Gemini_Generated_Image___2_.png">
+                  <img id="totem-tingquan" class="totem-img"      alt="" src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473054974-u8hhc2-Gemini_Generated_Image___3_.png">
+                  <video id="totem-songfeng" class="totem-vid" autoplay loop muted playsinline preload="auto"
+                    poster="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473060079-g9pfsd-Gemini_Generated_Image___4_.png">
+                    <source src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/videos/2026-06-03/1780473453290-r7xg5l-mp4.mp4" type="video/mp4">
+                  </video>
+                </div>
+
+                <div class="angle-block" data-tip="实时靠背角度 · 误差 ±0.5°">
+                  <div class="slot" id="slot">
+                    <div class="reel"><div class="strip"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span></div></div>
+                    <div class="reel"><div class="strip"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span></div></div>
+                    <div class="reel"><div class="strip"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span></div></div>
+                    <div class="deg">°</div>
+                  </div>
+                </div>
+                <div class="angle-cap">CHAIR ANGLE · <b id="modeName">阅读模式</b></div>
+              </div>
+
+              <div class="scenes">
+                <div class="scene guanyun active" data-scene="guanyun">
+                  <div class="num">01</div><div class="name">观云</div>
+                  <div class="meta">阅读 · 挺拔</div><div class="pill">98°</div>
+                </div>
+                <div class="scene tingquan" data-scene="tingquan">
+                  <div class="num">02</div><div class="name">听泉</div>
+                  <div class="meta">社交 · 软包</div><div class="pill">102°</div>
+                </div>
+                <div class="scene songfeng" data-scene="songfeng">
+                  <div class="num">03</div><div class="name">松风</div>
+                  <div class="meta">小憩 · 热敷</div><div class="pill">112°·42℃</div>
+                </div>
+              </div>
+
+              <div class="stand">
+                <div class="txt">
+                  <div class="t1">微动力助起</div>
+                  <div class="t2">长按 2 秒 · 防误触起身</div>
+                </div>
+                <div class="stand-btn" id="standBtn">
+                  <svg class="ring" viewBox="0 0 80 80">
+                    <circle class="bg" cx="40" cy="40" r="36" fill="none" stroke-width="2.5"/>
+                    <circle class="fg" cx="40" cy="40" r="36" fill="none" stroke-width="2.5"/>
+                  </svg>
+                  <span class="arrow">↑</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- HEALTH PAGE -->
+          <div class="page" data-page="e-health">
+            <div class="page-header">
+              <div class="page-title">健康一览</div>
+              <div class="ph-actions">
+                <div class="icon-btn" data-tip="发送今日报告" data-toast="今日报告已发送给小红">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7M16 6l-4-4-4 4M12 2v14"/></svg>
+                </div>
+                <div class="kebab" data-menu="eHealthMenu">
+                  <span class="kdot"></span><span class="kdot"></span><span class="kdot"></span>
+                </div>
+              </div>
+              <div class="menu-pop" id="eHealthMenu">
+                <div class="mi" data-toast="已切换到周视图">
+                  <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg></div>
+                  切换到周视图
+                </div>
+                <div class="mi" data-toast="健康数据已导出 · health-2026-06.csv">
+                  <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg></div>
+                  导出数据
+                </div>
+                <div class="mi" data-toast="已分享给林医生">
+                  <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.5 10.5l7-4M8.5 13.5l7 4"/></svg></div>
+                  分享给医生
+                </div>
+              </div>
+            </div>
+            <div class="scroll">
+              <div class="seg-tabs" data-seg="health">
+                <div class="seg-tab active" data-seg-val="day">今日</div>
+                <div class="seg-tab" data-seg-val="week">本周</div>
+                <div class="seg-tab" data-seg-val="month">本月</div>
+              </div>
+
+              <div class="health-card">
+                <div class="health-row">
+                  <div>
+                    <div class="hero-mode-lbl" id="healthLbl">今日落座</div>
+                    <div class="kpi" style="margin-top:6px;" data-tip="周一至周日累计 24 小时 18 分"><span class="num" id="healthNum">3</span><span class="unit" id="healthUnit">小时 24 分</span></div>
+                  </div>
+                  <span class="kpi-trend" id="healthTrend">较昨日 -18 分</span>
+                </div>
+                <div class="bar-row" data-tip="本周每日落座时长">
+                  <div class="bar" style="height:34%" data-tip="周一 · 1.8 小时"></div>
+                  <div class="bar" style="height:48%" data-tip="周二 · 2.5 小时"></div>
+                  <div class="bar" style="height:62%" data-tip="周三 · 3.2 小时"></div>
+                  <div class="bar" style="height:40%" data-tip="周四 · 2.1 小时"></div>
+                  <div class="bar" style="height:74%" data-tip="周五 · 3.9 小时"></div>
+                  <div class="bar hl" style="height:88%" data-tip="周六 · 4.6 小时 · 最高"></div>
+                  <div class="bar" style="height:66%" data-tip="今日 · 3.4 小时"></div>
+                </div>
+              </div>
+
+              <div class="tile-grid" style="margin-bottom:8px;">
+                <div class="tile" data-tip="过去 24h 心率均值 · 平稳">
+                  <div class="tlbl">心率</div>
+                  <div class="tval">72<span class="u">bpm</span></div>
+                  <div class="tsub"><span class="tdot"></span>基线 65–80</div>
+                </div>
+                <div class="tile" data-tip="今晨血压 平稳">
+                  <div class="tlbl">血压</div>
+                  <div class="tval">128<span class="u">/82</span></div>
+                  <div class="tsub"><span class="tdot"></span>正常偏高</div>
+                </div>
+                <div class="tile" data-tip="深睡 1h 42m · 浅睡 4h 20m">
+                  <div class="tlbl">睡眠</div>
+                  <div class="tval">7.2<span class="u">小时</span></div>
+                  <div class="tsub"><span class="tdot"></span>质量 86</div>
+                </div>
+                <div class="tile warn" data-tip="今日步数较昨日 -28%">
+                  <div class="tlbl">活动</div>
+                  <div class="tval">2,418<span class="u">步</span></div>
+                  <div class="tsub"><span class="tdot"></span>建议增加</div>
+                </div>
+              </div>
+
+              <div class="section-label">用药提醒</div>
+              <div class="med-row" data-toast="已记录 · 阿司匹林 已服用">
+                <div class="mc">A</div>
+                <div style="flex:1;">
+                  <div class="mn">阿司匹林肠溶片</div>
+                  <div class="mt">早餐后 · 100mg · 8:30</div>
+                </div>
+                <div class="mck done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg></div>
+              </div>
+              <div class="med-row" data-toast="已记录 · 钙片 已服用">
+                <div class="mc" style="background:rgba(125,142,126,.14);color:var(--sage);">钙</div>
+                <div style="flex:1;">
+                  <div class="mn">碳酸钙 D3</div>
+                  <div class="mt">午餐后 · 600mg · 12:30</div>
+                </div>
+                <div class="mck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg></div>
+              </div>
+              <div class="med-row" data-toast="已记录 · 降压药 已服用">
+                <div class="mc" style="background:rgba(229,162,59,.14);color:var(--warning);">降</div>
+                <div style="flex:1;">
+                  <div class="mn">缬沙坦胶囊</div>
+                  <div class="mt">睡前 · 80mg · 21:00</div>
+                </div>
+                <div class="mck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg></div>
+              </div>
+
+              <div class="section-label">今日作息</div>
+              <div class="routine-list">
+                <div class="routine">
+                  <div class="lt">
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v18M3 12h18"/></svg></div>
+                    <div><div class="t1">观云 · 阅读</div><div class="t2">9:08 — 10:42</div></div>
+                  </div>
+                  <span class="rt">94 分钟</span>
+                </div>
+                <div class="routine">
+                  <div class="lt">
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+                    <div><div class="t1">听泉 · 社交会客</div><div class="t2">11:20 — 12:05</div></div>
+                  </div>
+                  <span class="rt">45 分钟</span>
+                </div>
+                <div class="routine">
+                  <div class="lt">
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12h6l3-8 4 16 3-8h2"/></svg></div>
+                    <div><div class="t1">松风 · 热敷小憩</div><div class="t2">14:10 — 14:55</div></div>
+                  </div>
+                  <span class="rt">45 分钟</span>
+                </div>
+                <div class="routine">
+                  <div class="lt">
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2v8m0 4v8M2 12h8m4 0h8"/></svg></div>
+                    <div><div class="t1">微动力助起</div><div class="t2">本日触发 4 次</div></div>
+                  </div>
+                  <span class="rt">省力 30%</span>
+                </div>
+              </div>
+
+              <div class="section-label">家庭医生</div>
+              <div class="doc-card">
+                <div class="dav"><img src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473123185-jil7av-Gemini_Generated_Image_l79augl79augl79a.png" alt=""/></div>
+                <div style="flex:1;z-index:1;">
+                  <div class="dn">林书桓 医生</div>
+                  <div class="ds">协和家庭医生 · 老年科 · 24h 在线</div>
+                </div>
+                <button class="dbtn" data-toast="正在与林医生发起视频问诊">问诊</button>
+              </div>
+
+              <div class="section-label">睡眠</div>
+              <div class="sleep-card">
+                <div class="health-row">
+                  <div>
+                    <div class="hero-mode-lbl">昨夜睡眠 · 22:48 → 06:12</div>
+                    <div class="kpi" style="margin-top:6px;"><span class="num">7.2</span><span class="unit">小时 · 质量 86</span></div>
+                  </div>
+                  <span class="kpi-trend">较前 +12 分</span>
+                </div>
+                <div class="sleep-bars" data-tip="深睡 / 浅睡 / REM / 醒">
+                  <div class="sb awake" style="height:30%"></div>
+                  <div class="sb light" style="height:55%"></div>
+                  <div class="sb deep" style="height:90%"></div>
+                  <div class="sb deep" style="height:85%"></div>
+                  <div class="sb light" style="height:55%"></div>
+                  <div class="sb rem" style="height:70%"></div>
+                  <div class="sb light" style="height:50%"></div>
+                  <div class="sb deep" style="height:80%"></div>
+                  <div class="sb light" style="height:60%"></div>
+                  <div class="sb rem" style="height:75%"></div>
+                  <div class="sb light" style="height:50%"></div>
+                  <div class="sb awake" style="height:25%"></div>
+                </div>
+                <div style="font-size:11px;color:var(--ink-2);margin-top:8px;display:flex;gap:14px;letter-spacing:.05em;">
+                  <span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:2px;background:var(--ink);"></span>深睡 1h 42m</span>
+                  <span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:2px;background:var(--sage);"></span>浅睡 4h 20m</span>
+                  <span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:2px;background:#9CB1D4;"></span>REM 1h 06m</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SETTINGS PAGE -->
+          <div class="page" data-page="e-settings">
+            <div class="page-header">
+              <div class="page-title">设置</div>
+              <div class="ph-actions">
+                <div class="kebab" data-menu="eSetMenu">
+                  <span class="kdot"></span><span class="kdot"></span><span class="kdot"></span>
+                </div>
+                <div class="icon-btn" data-tip="返回主控" data-go-page="e-home">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                </div>
+              </div>
+              <div class="menu-pop" id="eSetMenu">
+                <div class="mi" data-toast="字体已切换到「特大」">
+                  <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 7V5h14v2M9 5v14M15 11v8"/></svg></div>
+                  切换字号
+                </div>
+                <div class="mi" data-toast="正在检查固件…">
+                  <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 12a9 9 0 11-3-6.7L21 8M21 3v5h-5"/></svg></div>
+                  检查固件更新
+                </div>
+                <div class="mi" data-toast="客服已为您接通">
+                  <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M9 9a3 3 0 116 0c0 2-3 2-3 4M12 17h.01"/></svg></div>
+                  联系客服
+                </div>
+              </div>
+            </div>
+            <div class="scroll">
+              <div class="profile-card">
+                <div class="big-avatar"><img src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473134454-jxlhtb-Gemini_Generated_Image_mbebsdmbebsdmbeb.png" alt=""/></div>
+                <div>
+                  <div class="pn">王建国</div>
+                  <div class="pi">68 岁 · 健康分 92 · 北京</div>
+                </div>
+              </div>
+
+              <div class="section-label">座椅</div>
+              <div class="list-card">
+                <div class="list-row" data-go-page="e-diagnostic">
+                  <div class="lt">
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg></div>
+                    <div><div class="label">硬件诊断</div><div class="val">全部正常 · 4 项在线</div></div>
+                  </div>
+                  <span class="arr">›</span>
+                </div>
+                <div class="list-row" data-go-page="e-accessibility">
+                  <div class="lt">
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="5" r="2"/><path d="M5 11h14M9 11l-1 10M15 11l1 10M9 14h6"/></svg></div>
+                    <div><div class="label">无障碍</div><div class="val">大字 · 高对比 · 慢语速</div></div>
+                  </div>
+                  <span class="arr">›</span>
+                </div>
+                <div class="list-row" data-toast="已校准。靠背基线 102°">
+                  <div class="lt">
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 6v12M19 6v12M5 12h14"/></svg></div>
+                    <div><div class="label">姿态校准</div><div class="val">基线 102° · 已校准</div></div>
+                  </div>
+                  <span class="arr">›</span>
+                </div>
+                <div class="list-row">
+                  <div class="lt">
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12h6l2-3 4 6 2-3h4"/></svg></div>
+                    <div><div class="label">体征采集</div><div class="val">PVDF 压电网络 · 在线</div></div>
+                  </div>
+                  <div class="switch on" data-switch></div>
+                </div>
+                <div class="list-row">
+                  <div class="lt">
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></div>
+                    <div><div class="label">夜灯 · 起夜模式</div><div class="val">23:00–05:00 自动启用</div></div>
+                  </div>
+                  <div class="switch on" data-switch></div>
+                </div>
+              </div>
+
+              <div class="section-label">舒适度</div>
+              <div class="list-card">
+                <div class="list-row">
+                  <div class="lt" style="flex:1;">
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2v6M5 22a7 7 0 0114 0z"/></svg></div>
+                    <div style="flex:1;">
+                      <div class="label">热敷温度</div>
+                      <div class="slider" data-slider style="margin-top:8px;">
+                        <div class="fill" style="width:65%"></div>
+                        <div class="knob" style="left:65%"></div>
+                      </div>
+                    </div>
+                    <div class="val" style="font-feature-settings:'tnum';">42℃</div>
+                  </div>
+                </div>
+                <div class="list-row">
+                  <div class="lt" style="flex:1;">
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg></div>
+                    <div style="flex:1;">
+                      <div class="label">久坐提醒</div>
+                      <div class="slider" data-slider style="margin-top:8px;">
+                        <div class="fill" style="width:50%"></div>
+                        <div class="knob" style="left:50%"></div>
+                      </div>
+                    </div>
+                    <div class="val" style="font-feature-settings:'tnum';">90 分</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="section-label">家庭</div>
+              <div class="list-card">
+                <div class="list-row" data-toast="已开始与小红的视频通话">
+                  <div class="lt">
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg></div>
+                    <div><div class="label">呼叫女儿 · 小红</div><div class="val">在线 · 138****7621</div></div>
+                  </div>
+                  <span class="arr">›</span>
+                </div>
+                <div class="list-row" data-toast="紧急联系人已发送家庭群">
+                  <div class="lt">
+                    <div class="ic" style="background:rgba(209,77,59,.12);color:var(--crimson);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l9 4v6c0 5-4 9-9 10-5-1-9-5-9-10V6l9-4z"/></svg></div>
+                    <div><div class="label">一键紧急求助</div><div class="val">同时通知 3 位家人 + 120</div></div>
+                  </div>
+                  <span class="arr">›</span>
+                </div>
+              </div>
+
+              <button class="btn btn-ghost" id="eLogout" style="margin-top:8px;">退出登录</button>
+            </div>
+          </div>
+
+          <!-- DIAGNOSTIC SUB-PAGE -->
+          <div class="page" data-page="e-diagnostic">
+            <div class="sub-header">
+              <div class="back-btn" data-go-page="e-settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg></div>
+              <div class="stitle">硬件诊断</div>
+              <div class="sright">
+                <div class="icon-btn" data-tip="刷新" data-toast="正在重新检测硬件…">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 12a9 9 0 11-3-6.7L21 8M21 3v5h-5"/></svg>
+                </div>
+              </div>
+            </div>
+            <div class="scroll">
+              <div class="diag-row">
+                <div class="dl">
+                  <span class="led"></span>
+                  <div><div class="dt1">PVDF 压电网络</div><div class="dt2">采样 500 Hz · 噪声 0.4%</div></div>
+                </div>
+                <span class="dv">在线</span>
+              </div>
+              <div class="diag-row">
+                <div class="dl">
+                  <span class="led"></span>
+                  <div><div class="dt1">蓝牙 5.3</div><div class="dt2">RSSI -52 dBm · 1.2 m</div></div>
+                </div>
+                <span class="dv">已连接</span>
+              </div>
+              <div class="diag-row">
+                <div class="dl">
+                  <span class="led"></span>
+                  <div><div class="dt1">主机电池</div><div class="dt2">额定 12.6 V · 续航 38 天</div></div>
+                </div>
+                <span class="dv">86%</span>
+              </div>
+              <div class="diag-row">
+                <div class="dl">
+                  <span class="led"></span>
+                  <div><div class="dt1">碳纤维加热丝</div><div class="dt2">阻值 4.8 Ω · 温度反馈 23.4 ℃</div></div>
+                </div>
+                <span class="dv">就绪</span>
+              </div>
+              <div class="diag-row warn">
+                <div class="dl">
+                  <span class="led"></span>
+                  <div><div class="dt1">底座液压阻尼</div><div class="dt2">出厂校准已超 380 天 · 建议复检</div></div>
+                </div>
+                <span class="dv">提醒</span>
+              </div>
+              <div class="diag-row">
+                <div class="dl">
+                  <span class="led"></span>
+                  <div><div class="dt1">气囊 · 4 路</div><div class="dt2">充放气循环 1,284 次</div></div>
+                </div>
+                <span class="dv">正常</span>
+              </div>
+
+              <div class="section-label">固件</div>
+              <div class="list-card">
+                <div class="list-row" data-toast="已是最新版本 v3.4.2">
+                  <div class="lt">
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v12M7 10l5 5 5-5"/></svg></div>
+                    <div><div class="label">检查更新</div><div class="val">当前 v3.4.2 · 2026-04-22</div></div>
+                  </div>
+                  <span class="arr">›</span>
+                </div>
+                <div class="list-row" data-toast="已生成报告 · diag-2026-06-01.txt">
+                  <div class="lt">
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></div>
+                    <div><div class="label">导出诊断报告</div><div class="val">附带状态机历史</div></div>
+                  </div>
+                  <span class="arr">›</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ACCESSIBILITY SUB-PAGE -->
+          <div class="page" data-page="e-accessibility">
+            <div class="sub-header">
+              <div class="back-btn" data-go-page="e-settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg></div>
+              <div class="stitle">无障碍</div>
+            </div>
+            <div class="scroll">
+              <div class="section-label">显示</div>
+              <div class="list-card">
+                <div class="list-row">
+                  <div class="lt" style="flex:1;">
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 7V5h14v2M9 5v14M15 11v8"/></svg></div>
+                    <div style="flex:1;">
+                      <div class="label">字号</div>
+                      <div class="slider" data-slider style="margin-top:8px;">
+                        <div class="fill" style="width:75%"></div>
+                        <div class="knob" style="left:75%"></div>
+                      </div>
+                    </div>
+                    <div class="val">特大</div>
+                  </div>
+                </div>
+                <div class="list-row">
+                  <div class="lt">
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 3v18"/></svg></div>
+                    <div><div class="label">高对比</div><div class="val">提升文字与背景反差</div></div>
+                  </div>
+                  <div class="switch on" data-switch></div>
+                </div>
+                <div class="list-row">
+                  <div class="lt">
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12h18M12 3v18"/></svg></div>
+                    <div><div class="label">减少动效</div><div class="val">降低色彩浸染等过渡</div></div>
+                  </div>
+                  <div class="switch" data-switch></div>
+                </div>
+              </div>
+
+              <div class="section-label">声音</div>
+              <div class="list-card">
+                <div class="list-row">
+                  <div class="lt" style="flex:1;">
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 5L6 9H2v6h4l5 4V5zM15 9a4 4 0 010 6"/></svg></div>
+                    <div style="flex:1;">
+                      <div class="label">语音助手语速</div>
+                      <div class="slider" data-slider style="margin-top:8px;">
+                        <div class="fill" style="width:35%"></div>
+                        <div class="knob" style="left:35%"></div>
+                      </div>
+                    </div>
+                    <div class="val">慢</div>
+                  </div>
+                </div>
+                <div class="list-row">
+                  <div class="lt">
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 5L6 9H2v6h4l5 4V5zM19 5L15 9M15 15l4 4M15 5l4 4M19 15l-4 4"/></svg></div>
+                    <div><div class="label">提示音</div><div class="val">柔和钟声 · 暖琥珀</div></div>
+                  </div>
+                  <div class="switch on" data-switch></div>
+                </div>
+              </div>
+
+              <div class="section-label">触控</div>
+              <div class="list-card">
+                <div class="list-row">
+                  <div class="lt">
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M12 5V3M12 21v-2M5 12H3M21 12h-2"/></svg></div>
+                    <div><div class="label">触控反馈</div><div class="val">按键确认震动 200 ms</div></div>
+                  </div>
+                  <div class="switch on" data-switch></div>
+                </div>
+                <div class="list-row">
+                  <div class="lt">
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12h6l3-8 4 16 3-8h2"/></svg></div>
+                    <div><div class="label">误触保护</div><div class="val">所有大角度调节均长按 2s</div></div>
+                  </div>
+                  <div class="switch on" data-switch></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB NAV -->
+          <div class="tab-nav e-tabs" id="eTabs">
+            <div class="tab-item active" data-go-page="e-home">
+              <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 11l9-8 9 8M5 9.5V21h14V9.5"/></svg></div>
+              <span>主控</span>
+            </div>
+            <div class="tab-item" data-go-page="e-health">
+              <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg></div>
+              <span>健康</span>
+            </div>
+            <div class="tab-item" data-go-page="e-settings">
+              <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.34 1.87l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1.04 1.56V21a2 2 0 11-4 0v-.08a1.7 1.7 0 00-1.04-1.56 1.7 1.7 0 00-1.87.34l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.7 1.7 0 00.34-1.87A1.7 1.7 0 003 14H3a2 2 0 110-4h.08a1.7 1.7 0 001.56-1.04 1.7 1.7 0 00-.34-1.87l-.06-.06a2 2 0 112.83-2.83l.06.06a1.7 1.7 0 001.87.34H9a1.7 1.7 0 001.04-1.56V3a2 2 0 114 0v.08a1.7 1.7 0 001.04 1.56 1.7 1.7 0 001.87-.34l.06-.06a2 2 0 112.83 2.83l-.06.06a1.7 1.7 0 00-.34 1.87V9a1.7 1.7 0 001.56 1.04H21a2 2 0 110 4h-.08a1.7 1.7 0 00-1.56 1.04z"/></svg></div>
+              <span>设置</span>
+            </div>
+          </div>
+
+          <!-- Voice FAB (only on home/health) -->
+          <div class="voice-fab" id="voiceFab" data-tip="按住说话">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="13" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3M9 21h6"/></svg>
+          </div>
+
+          <!-- Voice listening sheet -->
+          <div class="voice-sheet" id="voiceSheet">
+            <div class="vh">
+              <div class="vt">VOICE · 我在听</div>
+              <div class="vc" id="voiceClose">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+              </div>
+            </div>
+            <div class="vmsg" id="vmsg">您好，我是松小颐<span class="blink"></span></div>
+            <div class="vbars"><span class="b"></span><span class="b"></span><span class="b"></span><span class="b"></span><span class="b"></span><span class="b"></span><span class="b"></span><span class="b"></span><span class="b"></span><span class="b"></span></div>
+            <div class="vhint">试试这样说</div>
+            <div class="vchips">
+              <button class="vc-chip" data-vchip="songfeng">「我想休息一下」</button>
+              <button class="vc-chip" data-vchip="guanyun">「我要看书」</button>
+              <button class="vc-chip" data-vchip="tingquan">「调到社交」</button>
+              <button class="vc-chip" data-vchip="callKid">「视频呼叫小红」</button>
+              <button class="vc-chip" data-vchip="weather">「今天天气」</button>
+            </div>
+          </div>
+
+          <div class="toast" id="eToast">已切换至 阅读模式</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- CAREGIVER DEVICE                                              -->
+  <!-- ============================================================ -->
+  <div class="device-wrap">
+    <div class="device-label">子女监护端</div>
+    <div class="device">
+      <div class="screen">
+        <div class="app care" id="care">
+          <div class="statusbar">
+            <span>9:41</span>
+            <div class="right">
+              <span class="sb-ic" data-tip="信号 · 满格"><svg viewBox="0 0 14 10" fill="currentColor"><rect x="0" y="7" width="2" height="3" rx="0.5"/><rect x="3" y="5" width="2" height="5" rx="0.5"/><rect x="6" y="3" width="2" height="7" rx="0.5"/><rect x="9" y="0" width="2" height="10" rx="0.5"/></svg></span>
+              <span class="sb-ic" data-tip="WiFi · 公司"><svg viewBox="0 0 14 10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M1 4.5C2.6 3 4.6 2 7 2s4.4 1 6 2.5"/><path d="M3 6.7C4.1 5.7 5.5 5 7 5s2.9.7 4 1.7"/><circle cx="7" cy="9" r="0.8" fill="currentColor"/></svg></span>
+              <span class="sb-bat" data-tip="电量 · 82%"><span class="bb"></span><span class="bn"></span></span>
+            </div>
+          </div>
+
+          <!-- LOGIN -->
+          <div class="page active" data-page="c-login">
+            <div class="c-login">
+              <div class="login-bg"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+
+              <div class="login-hero">
+                <video autoplay loop muted playsinline preload="auto"
+                  poster="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473391693-ytk7ki-Gemini_Generated_Image_vn76e5vn76e5vn76.png">
+                  <source src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/videos/2026-06-03/1780473441676-8ylmxn-%E6%97%A0%E6%B0%B4%E5%8D%B0.mp4" type="video/mp4">
+                </video>
+                <span class="h-tag">CAREGIVER · SONG·YI</span>
+                <div class="h-cap">
+                  <div class="hh">家人在远方<br/>关心未隔断</div>
+                  <div class="hs">实时体征 · 跨端预警 · 一键守护</div>
+                </div>
+              </div>
+
+              <div class="login-body">
+                <div class="brand-mini">
+                  <div class="logo" style="background:var(--crimson);">爱</div>
+                  <div class="blogo">SONG·YI · 监护台</div>
+                </div>
+                <div class="login-h">你好，<span class="accent">小红</span><br/>父亲一切都好</div>
+                <div class="login-sub">登录后实时同步父亲的座椅状态、体征流与生活节律。</div>
+
+                <div class="role">
+                  <div class="role-card selected">
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 11a3 3 0 110-6 3 3 0 010 6zm6 1a2.5 2.5 0 110-5 2.5 2.5 0 010 5zM3 20c0-3 3-5 6-5s6 2 6 5"/></svg></div>
+                    <div class="meta"><div class="t1">家庭成员 · 王小红</div><div class="t2">主监护人 · 138****7621</div></div>
+                    <span class="arr">›</span>
+                  </div>
+                </div>
+
+                <div class="form">
+                  <div class="field">
+                    <span class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></svg></span>
+                    <input id="cPhone" type="tel" placeholder="138 0099 8800" value="138 0099 8800"/>
+                  </div>
+                  <div class="field">
+                    <span class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg></span>
+                    <input id="cPass" type="password" placeholder="••••••" value="········"/>
+                    <span class="send-code" data-toast="短信验证码已发送 · 138****7621">短信登录</span>
+                  </div>
+                </div>
+
+                <button class="btn btn-primary" id="cLoginBtn">进入监护台</button>
+
+                <div class="legal">
+                  <div class="agree-row">
+                    <span class="chk on" id="cAgree"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 12l5 5L20 7"/></svg></span>
+                    <span>我已阅读并同意 <a>用户协议</a> 与 <a>隐私政策</a></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- HOME -->
+          <div class="page" data-page="c-home">
+            <div class="c-header">
+              <div>
+                <div class="c-eyebrow">FATHER · LIVE</div>
+                <div class="c-name">王建国</div>
+              </div>
+              <div class="c-actions">
+                <div class="pill" id="cPill" data-tip="MQTT 推送 · 延迟 0.8s"><span class="pdot"></span><span id="cPillTxt">一切正常</span></div>
+                <div class="bell" id="cBell" data-tip="通知中心">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M14 21a2 2 0 01-4 0"/></svg>
+                  <span class="badge"></span>
+                </div>
+                <div class="kebab" data-menu="cMenu">
+                  <span class="kdot"></span><span class="kdot"></span><span class="kdot"></span>
+                </div>
+              </div>
+              <div class="notify-pop" id="cNotify">
+                <div class="nh">
+                  <div class="nt">通知中心 · 7</div>
+                  <div class="na" data-toast="已全部标为已读">全部已读</div>
+                </div>
+                <div class="nitem unread crimson" data-go-page="c-alert-detail">
+                  <div class="nic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/></svg></div>
+                  <div class="nb"><div class="nb1">心率骤变 · +34%</div><div class="nb2">系统已自动启动被动防御</div><div class="nt">刚刚</div></div>
+                </div>
+                <div class="nitem unread warn">
+                  <div class="nic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+                  <div class="nb"><div class="nb1">久坐已超过 90 分钟</div><div class="nb2">已轻柔提示父亲起身活动</div><div class="nt">2 小时前</div></div>
+                </div>
+                <div class="nitem sage">
+                  <div class="nic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 12l5 5L20 7"/></svg></div>
+                  <div class="nb"><div class="nb1">完成松风热敷 32 分钟</div><div class="nb2">背部最高 42℃ · 体压均匀</div><div class="nt">昨天 19:30</div></div>
+                </div>
+                <div class="nitem sage">
+                  <div class="nic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></div>
+                  <div class="nb"><div class="nb1">夜灯已自动点亮</div><div class="nb2">2700K 琥珀色 · 持续 6 分钟</div><div class="nt">昨天 22:48</div></div>
+                </div>
+                <div class="nitem">
+                  <div class="nic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+                  <div class="nb"><div class="nb1">林医生留言</div><div class="nb2">建议每日 16:30 增加 15 分钟主动按摩</div><div class="nt">昨天 16:02</div></div>
+                </div>
+              </div>
+              <div class="menu-pop" id="cMenu">
+                <div class="mi" data-toast="正在拨通父亲的智能音箱">
+                  <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="6" y="3" width="12" height="18" rx="2"/><circle cx="12" cy="17" r="1"/></svg></div>
+                  呼叫父亲
+                </div>
+                <div class="mi" data-go-page="c-alerts">
+                  <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M14 21a2 2 0 01-4 0"/></svg></div>
+                  查看预警日志
+                </div>
+                <div class="mi" data-go-page="c-reports">
+                  <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 18h4l2-12 4 18 3-9 2 3h3"/></svg></div>
+                  本周报告
+                </div>
+                <div class="sep"></div>
+                <div class="mi" data-toast="父亲端已收到您的关心问候">
+                  <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+                  发送一条问候
+                </div>
+              </div>
+            </div>
+
+            <div class="hero-card">
+              <div class="hero-row">
+                <div>
+                  <div class="hero-mode-lbl">CURRENT MODE</div>
+                  <div class="hero-mode" id="cMode">阅读模式</div>
+                  <div class="hero-sub" id="cSub">已落座 14 分钟 · 体征平稳</div>
+                </div>
+                <div class="hero-tag" id="chairTag">98°</div>
+              </div>
+              <div class="chair-art" id="chairArt" data-tip="点击查看实时硬件状态" style="cursor:pointer;">
+                <img class="chair-img base" alt="" src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473045237-l7df7q-Gemini_Generated_Image___1_.png">
+                <img class="chair-img alt"  alt="" src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473065170-rn30aq-Gemini_Generated_Image_.png">
+              </div>
+            </div>
+
+            <div class="wave-card">
+              <div class="wave-head">
+                <div class="wave-title">VITAL · MQTT 实时</div>
+                <div class="wave-vals">
+                  <span>HR<b id="hrVal">72</b></span>
+                  <span>RESP<b id="rrVal">16</b></span>
+                </div>
+              </div>
+              <svg class="wave-svg" viewBox="0 0 320 64" preserveAspectRatio="none" data-tip="MQTT 实时刷新 · 延迟 < 1.5s">
+                <path id="hrPath" d="" stroke="#D14D3B" stroke-width="1.7" fill="none" stroke-linejoin="round"/>
+                <path id="rrPath" d="" stroke="#7D8E7E" stroke-width="1.3" fill="none" stroke-linejoin="round" opacity=".75"/>
+              </svg>
+            </div>
+
+            <div class="mini-actions">
+              <div class="a" data-toast="正在拨通父亲座椅 · 智能音箱"><span>语音呼叫</span><span class="arr">›</span></div>
+              <div class="a" data-go-page="c-reports"><span>查看报告</span><span class="arr">›</span></div>
+            </div>
+          </div>
+
+          <!-- ALERTS -->
+          <div class="page" data-page="c-alerts">
+            <div class="page-header">
+              <div class="page-title">预警与日志</div>
+              <div class="ph-actions">
+                <div class="icon-btn" data-tip="筛选" data-toast="过滤器已打开">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 5h18M6 12h12M10 19h4"/></svg>
+                </div>
+                <div class="kebab" data-menu="cAlertMenu">
+                  <span class="kdot"></span><span class="kdot"></span><span class="kdot"></span>
+                </div>
+              </div>
+              <div class="menu-pop" id="cAlertMenu">
+                <div class="mi" data-toast="所有日志已标记为已读">
+                  <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 12l5 5L20 7"/></svg></div>
+                  全部标为已读
+                </div>
+                <div class="mi" data-toast="日志已导出 · alerts-202606.csv">
+                  <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg></div>
+                  导出 CSV
+                </div>
+                <div class="mi" data-go-page="c-family">
+                  <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 11-14 0 7 7 0 0114 0z"/></svg></div>
+                  通知偏好
+                </div>
+              </div>
+            </div>
+            <div class="scroll">
+              <div class="alert-list">
+                <div class="alert-card crimson" id="alertOpen">
+                  <div class="ahead">
+                    <span class="tag">URGENT · 心率骤变</span>
+                    <span class="time">刚刚</span>
+                  </div>
+                  <div class="alead">检测到父亲体征异变</div>
+                  <div class="adesc">心率较基线偏离 +34%。系统已自动开启被动防御。点击查看详情。</div>
+                </div>
+                <div class="alert-card warn">
+                  <div class="ahead"><span class="tag">提醒 · 久坐</span><span class="time">2h 前</span></div>
+                  <div class="alead">久坐已超过 90 分钟</div>
+                  <div class="adesc">已轻柔提示父亲起身活动 · 父亲于 3 分钟后切换至助起。</div>
+                </div>
+                <div class="alert-card">
+                  <div class="ahead"><span class="tag">日志</span><span class="time">昨天 22:48</span></div>
+                  <div class="alead">夜灯已自动点亮</div>
+                  <div class="adesc">父亲起夜 · 椅底 2700K 琥珀夜灯持续 6 分钟后自动熄灭。</div>
+                </div>
+                <div class="alert-card">
+                  <div class="ahead"><span class="tag">日志</span><span class="time">昨天 19:30</span></div>
+                  <div class="alead">完成松风热敷 32 分钟</div>
+                  <div class="adesc">背部最高 42℃ · 体压均匀 · 无久压风险。</div>
+                </div>
+                <div class="alert-card warn">
+                  <div class="ahead"><span class="tag">提醒 · 起夜</span><span class="time">前天 04:12</span></div>
+                  <div class="alead">起夜后 18 分钟未回位</div>
+                  <div class="adesc">系统在 20 分钟阈值前由父亲主动落座，未触发紧急联动。</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- REPORTS -->
+          <div class="page" data-page="c-reports">
+            <div class="page-header">
+              <div class="page-title">本周报告</div>
+              <div class="ph-actions">
+                <div class="icon-btn" data-tip="下载 PDF" data-toast="导出为 PDF · 已发送至邮箱">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+                </div>
+                <div class="kebab" data-menu="cReportMenu">
+                  <span class="kdot"></span><span class="kdot"></span><span class="kdot"></span>
+                </div>
+              </div>
+              <div class="menu-pop" id="cReportMenu">
+                <div class="mi" data-toast="已切换到月度对比">
+                  <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18"/></svg></div>
+                  切换到月度
+                </div>
+                <div class="mi" data-toast="正在与林医生发起咨询">
+                  <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M19 14H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v6a2 2 0 01-2 2zM12 18v3"/></svg></div>
+                  请医生解读
+                </div>
+                <div class="mi" data-toast="报告已分享给哥哥">
+                  <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.5 10.5l7-4M8.5 13.5l7 4"/></svg></div>
+                  分享报告
+                </div>
+              </div>
+            </div>
+            <div class="scroll">
+              <div class="report-hero" data-tip="较上周 +3 · 同年龄段 Top 12%">
+                <div class="rt1">HEALTH SCORE · WEEK 22</div>
+                <div class="rscore">92</div>
+                <div class="rdesc">本周节律稳定，热敷与社交时长理想。建议每日午后增加 15 分钟主动按摩。</div>
+              </div>
+
+              <div class="metric-grid">
+                <div class="metric-card" data-tip="本周累计 23.8 小时 · 同比 -2.1h">
+                  <div class="ml">日均落座</div>
+                  <div class="mv">3.4 <span style="font-size:11px;color:var(--ink-2);font-weight:500;">小时</span></div>
+                  <div class="ms">较上周 -18 分</div>
+                  <div class="spark">
+                    <div class="b" style="height:34%" data-tip="一 · 1.8h"></div>
+                    <div class="b" style="height:48%" data-tip="二 · 2.5h"></div>
+                    <div class="b" style="height:62%" data-tip="三 · 3.2h"></div>
+                    <div class="b" style="height:40%" data-tip="四 · 2.1h"></div>
+                    <div class="b" style="height:74%" data-tip="五 · 3.9h"></div>
+                    <div class="b" style="height:88%" data-tip="六 · 4.6h · 峰值"></div>
+                    <div class="b" style="height:66%" data-tip="日 · 3.4h"></div>
+                  </div>
+                </div>
+                <div class="metric-card" data-tip="心率范围 65–80 bpm 全周稳定">
+                  <div class="ml">平均心率</div>
+                  <div class="mv">72 <span style="font-size:11px;color:var(--ink-2);font-weight:500;">bpm</span></div>
+                  <div class="ms">基线 68 · 平稳</div>
+                  <div class="spark">
+                    <div class="b" style="height:60%" data-tip="一 · 70 bpm"></div>
+                    <div class="b" style="height:55%" data-tip="二 · 69 bpm"></div>
+                    <div class="b" style="height:70%" data-tip="三 · 74 bpm"></div>
+                    <div class="b" style="height:65%" data-tip="四 · 72 bpm"></div>
+                    <div class="b" style="height:58%" data-tip="五 · 71 bpm"></div>
+                    <div class="b" style="height:62%" data-tip="六 · 73 bpm"></div>
+                    <div class="b" style="height:54%" data-tip="日 · 70 bpm"></div>
+                  </div>
+                </div>
+                <div class="metric-card" data-tip="夜灯触发率 100%">
+                  <div class="ml">起夜次数</div>
+                  <div class="mv">1.2 <span style="font-size:11px;color:var(--ink-2);font-weight:500;">/晚</span></div>
+                  <div class="ms">夜灯均自动联动</div>
+                </div>
+                <div class="metric-card" data-tip="背部按摩 2h 12m · 颈部 24m">
+                  <div class="ml">主动按摩</div>
+                  <div class="mv">4 <span style="font-size:11px;color:var(--ink-2);font-weight:500;">次</span></div>
+                  <div class="ms">合计 2 小时 12 分</div>
+                </div>
+              </div>
+
+              <div class="section-label">建议</div>
+              <div class="list-card">
+                <div class="list-row" data-toast="已为父亲新增 16:30 提醒">
+                  <div class="lt">
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2v6M5 22a7 7 0 0114 0z"/></svg></div>
+                    <div><div class="label">下午茶时段加按摩</div><div class="val">建议每日 16:30</div></div>
+                  </div>
+                  <span class="arr">+</span>
+                </div>
+                <div class="list-row" data-toast="本周食谱已发送给父亲">
+                  <div class="lt">
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12h18M5 6h14M7 18h10"/></svg></div>
+                    <div><div class="label">补钙 + 高纤维食谱</div><div class="val">由家庭医生 · 林医生</div></div>
+                  </div>
+                  <span class="arr">›</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- FAMILY -->
+          <div class="page" data-page="c-family">
+            <div class="page-header">
+              <div class="page-title">家</div>
+              <div class="ph-actions">
+                <div class="icon-btn" data-tip="邀请家人" data-toast="邀请链接已复制">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 5v14M5 12h14"/></svg>
+                </div>
+                <div class="kebab" data-menu="cFamMenu">
+                  <span class="kdot"></span><span class="kdot"></span><span class="kdot"></span>
+                </div>
+              </div>
+              <div class="menu-pop" id="cFamMenu">
+                <div class="mi" data-toast="家庭群聊已打开">
+                  <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+                  家庭群聊
+                </div>
+                <div class="mi" data-toast="家庭日历已打开">
+                  <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg></div>
+                  共同日历
+                </div>
+                <div class="mi danger" data-toast="紧急联动已发出 · 通知 3 位家人 + 120">
+                  <div class="mi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l9 4v6c0 5-4 9-9 10-5-1-9-5-9-10V6l9-4z"/></svg></div>
+                  紧急联动
+                </div>
+              </div>
+            </div>
+            <div class="scroll">
+              <div class="profile-card">
+                <div class="big-avatar" style="background:linear-gradient(135deg,#9CB1D4,#5C7AAB);"><img src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473100275-fzd1nm-Gemini_Generated_Image_hgpddmhgpddmhgpd.png" alt=""/></div>
+                <div>
+                  <div class="pn">王小红</div>
+                  <div class="pi">监护人 · 138****7621</div>
+                </div>
+              </div>
+
+              <div class="section-label">家庭成员</div>
+              <div class="family-card" data-toast="正在拨通父亲">
+                <div class="fav b"><img src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473134454-jxlhtb-Gemini_Generated_Image_mbebsdmbebsdmbeb.png" alt=""/></div>
+                <div class="fc-meta">
+                  <div class="fn">父亲 · 王建国</div>
+                  <div class="fr">在座 · 阅读模式 · 14 分钟</div>
+                </div>
+                <span class="ftag">主</span>
+              </div>
+              <div class="family-card" data-toast="哥哥已收到通知">
+                <div class="fav c"><img src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473149512-zb8ysv-Gemini_Generated_Image_njmz4nnjmz4nnjmz.png" alt=""/></div>
+                <div class="fc-meta">
+                  <div class="fn">哥哥 · 王志远</div>
+                  <div class="fr">仅查看 · 138****1188</div>
+                </div>
+                <span class="ftag">家人</span>
+              </div>
+              <div class="family-card" data-toast="正在与林医生发起视频">
+                <div class="fav"><img src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473123185-jil7av-Gemini_Generated_Image_l79augl79augl79a.png" alt=""/></div>
+                <div class="fc-meta">
+                  <div class="fn">家庭医生 · 林医生</div>
+                  <div class="fr">协和家庭医生 · 周中可达</div>
+                </div>
+                <span class="ftag">医生</span>
+              </div>
+
+              <div class="section-label">通知偏好</div>
+              <div class="list-card">
+                <div class="list-row">
+                  <div class="lt"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M14 21a2 2 0 01-4 0"/></svg></div>
+                    <div><div class="label">紧急预警</div><div class="val">震动 + 声音 + 闪灯</div></div>
+                  </div>
+                  <div class="switch on" data-switch></div>
+                </div>
+                <div class="list-row">
+                  <div class="lt"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+                    <div><div class="label">久坐 / 起夜</div><div class="val">仅声音提醒</div></div>
+                  </div>
+                  <div class="switch on" data-switch></div>
+                </div>
+                <div class="list-row">
+                  <div class="lt"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12h18M3 6h18M3 18h18"/></svg></div>
+                    <div><div class="label">日志推送</div><div class="val">每日晚间 21:00</div></div>
+                  </div>
+                  <div class="switch" data-switch></div>
+                </div>
+              </div>
+
+              <button class="btn btn-ghost" id="cLogout" style="margin-top:8px;">退出登录</button>
+            </div>
+          </div>
+
+          <!-- ALERT DETAIL SUB-PAGE -->
+          <div class="page" data-page="c-alert-detail">
+            <div class="sub-header">
+              <div class="back-btn" data-go-page="c-alerts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg></div>
+              <div class="stitle">预警详情</div>
+              <div class="sright">
+                <div class="icon-btn" data-tip="转给哥哥处理" data-toast="已转交给哥哥 · 王志远">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 12l3 3L22 5M22 12v7a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+                </div>
+              </div>
+            </div>
+            <div class="scroll">
+              <div style="background:linear-gradient(135deg,#D14D3B 0%,#B23A2A 100%);color:#fff;border-radius:24px;padding:20px;margin-bottom:12px;position:relative;overflow:hidden;">
+                <div style="font-size:10px;letter-spacing:.32em;opacity:.8;font-weight:500;">URGENT · 心率骤变</div>
+                <div style="font-size:30px;font-weight:700;margin-top:6px;font-feature-settings:'tnum';">+34%</div>
+                <div style="font-size:13px;opacity:.85;margin-top:4px;">基线 72 bpm · 当前峰值 96 bpm</div>
+                <div style="display:flex;gap:8px;margin-top:14px;">
+                  <button class="btn-sheet primary" style="background:rgba(255,255,255,.25);color:#fff;border:none;padding:11px 14px;border-radius:14px;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;flex:1;" data-toast="正在拨通父亲座椅智能音箱">立即语音呼叫</button>
+                  <button class="btn-sheet ghost" style="background:rgba(255,255,255,.15);color:#fff;border:none;padding:11px 14px;border-radius:14px;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;flex:1;" data-toast="已请求 120 待命">通知 120</button>
+                </div>
+              </div>
+
+              <div class="section-label">事件时间线</div>
+              <ul class="tline">
+                <li class="alert">
+                  <div class="tt"><b>14:32:08</b>检测到异常</div>
+                  <div class="ttitle">心率瞬间偏离基线 +34%</div>
+                  <div class="tdesc">PVDF 压电网络捕捉到峰值 96 bpm</div>
+                </li>
+                <li class="done">
+                  <div class="tt"><b>14:32:09</b>系统响应</div>
+                  <div class="ttitle">夜灯自动点亮 · 2700K 琥珀</div>
+                  <div class="tdesc">椅底 LED 渐入 1.2 s</div>
+                </li>
+                <li class="done">
+                  <div class="tt"><b>14:32:10</b>系统响应</div>
+                  <div class="ttitle">靠背气囊主动按摩节律</div>
+                  <div class="tdesc">L2 / L4 气囊轮替 · 周期 6s</div>
+                </li>
+                <li class="done">
+                  <div class="tt"><b>14:32:12</b>系统响应</div>
+                  <div class="ttitle">智能音箱就绪</div>
+                  <div class="tdesc">等待您的呼叫接入</div>
+                </li>
+                <li>
+                  <div class="tt"><b>—</b>等待响应</div>
+                  <div class="ttitle">您尚未确认处理</div>
+                  <div class="tdesc">超过 5 分钟未响应将自动通知哥哥</div>
+                </li>
+              </ul>
+
+              <div class="section-label">附加信息</div>
+              <div class="list-card">
+                <div class="list-row" data-toast="正在播放 14:30 - 14:34 数据回放">
+                  <div class="lt">
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+                    <div><div class="label">查看 4 分钟数据回放</div><div class="val">心率 / 呼吸 / 体压</div></div>
+                  </div>
+                  <span class="arr">›</span>
+                </div>
+                <div class="list-row" data-toast="已添加备注">
+                  <div class="lt">
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></svg></div>
+                    <div><div class="label">添加家人备注</div><div class="val">事件复盘 · 仅家人可见</div></div>
+                  </div>
+                  <span class="arr">›</span>
+                </div>
+                <div class="list-row" data-toast="已分享给林医生">
+                  <div class="lt">
+                    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.5 10.5l7-4M8.5 13.5l7 4"/></svg></div>
+                    <div><div class="label">同步给林医生</div><div class="val">附心电片段 + 体压热力图</div></div>
+                  </div>
+                  <span class="arr">›</span>
+                </div>
+              </div>
+
+              <button class="btn btn-primary" id="resolveAlert" style="margin-top:8px;">标记为已处理</button>
+            </div>
+          </div>
+
+          <!-- MEMBER DETAIL SUB-PAGE -->
+          <div class="page" data-page="c-member-detail">
+            <div class="sub-header">
+              <div class="back-btn" data-go-page="c-family"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg></div>
+              <div class="stitle">家人详情</div>
+              <div class="sright">
+                <div class="icon-btn" data-tip="呼叫" data-toast="正在与哥哥发起视频">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
+                </div>
+              </div>
+            </div>
+            <div class="scroll">
+              <div class="profile-card">
+                <div class="big-avatar" style="background:linear-gradient(135deg,#9CB1D4,#5C7AAB);"><img src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473149512-zb8ysv-Gemini_Generated_Image_njmz4nnjmz4nnjmz.png" alt=""/></div>
+                <div style="flex:1;">
+                  <div class="pn">王志远 · 哥哥</div>
+                  <div class="pi">138****1188 · 上海</div>
+                  <div style="display:flex;gap:6px;margin-top:8px;">
+                    <span style="font-size:10px;background:var(--surface-2);padding:4px 8px;border-radius:8px;letter-spacing:.05em;">家人</span>
+                    <span style="font-size:10px;background:rgba(125,142,126,.14);color:var(--sage);padding:4px 8px;border-radius:8px;letter-spacing:.05em;">仅查看</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="section-label">权限</div>
+              <div class="list-card">
+                <div class="perm-row">
+                  <div><div class="pl1">查看父亲实时状态</div><div class="pl2">含座椅模式、体征波形</div></div>
+                  <div class="switch on" data-switch></div>
+                </div>
+                <div class="perm-row">
+                  <div><div class="pl1">接收所有预警</div><div class="pl2">紧急 / 久坐 / 起夜均推送</div></div>
+                  <div class="switch on" data-switch></div>
+                </div>
+                <div class="perm-row">
+                  <div><div class="pl1">远程控制座椅</div><div class="pl2">切换场景、调温、紧急停止</div></div>
+                  <div class="switch" data-switch></div>
+                </div>
+                <div class="perm-row">
+                  <div><div class="pl1">查看健康报告</div><div class="pl2">周报 / 月报 / 年报</div></div>
+                  <div class="switch on" data-switch></div>
+                </div>
+                <div class="perm-row">
+                  <div><div class="pl1">编辑用药计划</div><div class="pl2">仅主监护人可开启</div></div>
+                  <div class="switch" data-switch></div>
+                </div>
+              </div>
+
+              <div class="section-label">近期互动</div>
+              <ul class="tline">
+                <li class="done"><div class="tt"><b>今天 09:12</b></div><div class="ttitle">查看父亲晨检报告</div></li>
+                <li class="done"><div class="tt"><b>昨天 21:48</b></div><div class="ttitle">视频通话父亲 14 分钟</div></li>
+                <li class="done"><div class="tt"><b>昨天 19:32</b></div><div class="ttitle">收到松风热敷完成通知</div></li>
+                <li><div class="tt"><b>3 天前</b></div><div class="ttitle">为父亲设置闹钟「散步提醒」</div></li>
+              </ul>
+
+              <button class="btn btn-ghost" data-toast="哥哥已设为家庭主监护人" style="margin-top:8px;">设为主监护人</button>
+              <button class="btn btn-ghost" data-toast="已发起移除流程，需哥哥确认" style="color:var(--crimson);">移出家庭</button>
+            </div>
+          </div>
+
+          <!-- CHAIR LIVE HUD SHEET (modal-like overlay) -->
+          <div class="scrim" id="hudScrim"></div>
+          <div class="sheet" id="hudSheet" style="max-height:78%;overflow-y:auto;">
+            <div class="stack2"></div>
+            <div class="stack"></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin:8px 0 4px;">
+              <div>
+                <div style="font-size:10px;letter-spacing:.32em;color:var(--ink-2);font-weight:500;">CHAIR · LIVE STATE</div>
+                <h3 style="margin:4px 0 0;">座椅实时状态</h3>
+              </div>
+              <div class="vc" id="hudClose" style="background:rgba(20,25,18,.06);width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M6 6l12 12M18 6L6 18"/></svg>
+              </div>
+            </div>
+            <!-- Body posture scan video -->
+            <div style="margin:14px 0 12px;border-radius:20px;overflow:hidden;background:#0d0f0c;position:relative;height:180px;">
+              <video autoplay loop muted playsinline preload="auto"
+                style="width:100%;height:100%;object-fit:cover;opacity:.92;"
+                poster="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473385625-w2grqt-Gemini_Generated_Image_qom2aeqom2aeqom2.png">
+                <source src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/videos/2026-06-03/1780473445904-c175tp-A_D_animated_X_ray_scan_of_a.mp4" type="video/mp4">
+              </video>
+              <div style="position:absolute;left:14px;top:12px;font-size:10px;letter-spacing:.32em;color:#fff;background:rgba(255,255,255,.18);padding:5px 10px;border-radius:10px;backdrop-filter:blur(10px);font-weight:500;z-index:2;">BODY · LIVE SCAN</div>
+              <div style="position:absolute;left:14px;right:14px;bottom:12px;color:#fff;z-index:2;display:flex;justify-content:space-between;align-items:flex-end;">
+                <div>
+                  <div style="font-size:13px;font-weight:600;">脊柱姿态 · 良好</div>
+                  <div style="font-size:11px;opacity:.7;margin-top:2px;letter-spacing:.04em;">L3-L5 受力均匀 · 无偏侧</div>
+                </div>
+                <div style="display:flex;gap:4px;">
+                  <span style="width:6px;height:6px;border-radius:50%;background:var(--sage);box-shadow:0 0 0 3px rgba(125,142,126,.4);"></span>
+                  <span style="font-size:10px;opacity:.75;letter-spacing:.06em;">SCANNING</span>
+                </div>
+              </div>
+              <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.35) 0%,rgba(0,0,0,0) 30%,rgba(0,0,0,0) 60%,rgba(0,0,0,.55) 100%);pointer-events:none;"></div>
+            </div>
+            <div class="hud" style="margin-top:14px;">
+              <div class="hud-row heat">
+                <div class="hl">
+                  <div class="hic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2v6M5 22a7 7 0 0114 0z"/></svg></div>
+                  <div><div class="ht1">背部加热</div><div class="ht2">碳纤维丝 · 3 分钟内升至目标温</div></div>
+                </div>
+                <div class="hv" id="hudHeat">42<span class="u">℃</span></div>
+              </div>
+              <div class="hud-row">
+                <div class="hl">
+                  <div class="hic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 12c2-3 4-3 6 0s4 3 6 0M5 18c2-3 4-3 6 0s4 3 6 0M5 6c2-3 4-3 6 0s4 3 6 0"/></svg></div>
+                  <div><div class="ht1">气囊按摩</div><div class="ht2">L2 / L4 轮替 · 周期 6 s</div></div>
+                </div>
+                <div class="hv">中等</div>
+              </div>
+              <div class="hud-row">
+                <div class="hl">
+                  <div class="hic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2v6M12 22v-2M2 12h6M22 12h-6"/><circle cx="12" cy="12" r="4"/></svg></div>
+                  <div><div class="ht1">环境光 · 2700K</div><div class="ht2">琥珀色 · 30% 亮度</div></div>
+                </div>
+                <div class="hv">已开</div>
+              </div>
+              <div class="hud-row">
+                <div class="hl">
+                  <div class="hic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+                  <div><div class="ht1">已落座</div><div class="ht2">连续 14 分钟 · 累计今日 3.4 h</div></div>
+                </div>
+                <div class="hv">14<span class="u">min</span></div>
+              </div>
+              <div class="hud-row">
+                <div class="hl">
+                  <div class="hic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 12h6l3-8 4 16 3-8h2"/></svg></div>
+                  <div><div class="ht1">体压分布</div><div class="ht2">尾椎峰值 18 kPa · 均匀</div></div>
+                </div>
+                <div class="hv">86<span class="u">分</span></div>
+              </div>
+              <div class="hud-row">
+                <div class="hl">
+                  <div class="hic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M9 12h6"/></svg></div>
+                  <div><div class="ht1">主机电池</div><div class="ht2">支持继续工作 38 天</div></div>
+                </div>
+                <div class="hv">86<span class="u">%</span></div>
+              </div>
+            </div>
+            <div class="actions" style="display:flex;gap:8px;margin-top:14px;">
+              <button class="btn-sheet ghost" data-toast="已下发停止指令">紧急停止</button>
+              <button class="btn-sheet primary" data-toast="正在与父亲音箱建立通话">语音呼叫</button>
+            </div>
+          </div>
+
+          <!-- TAB NAV -->
+          <div class="tab-nav c-tabs" id="cTabs">
+            <div class="tab-item active" data-go-page="c-home">
+              <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 11l9-8 9 8M5 9.5V21h14V9.5"/></svg></div>
+              <span>实时</span>
+            </div>
+            <div class="tab-item" data-go-page="c-alerts">
+              <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M14 21a2 2 0 01-4 0"/></svg></div>
+              <span>预警</span>
+            </div>
+            <div class="tab-item" data-go-page="c-reports">
+              <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 18h4l2-12 4 18 3-9 2 3h3"/></svg></div>
+              <span>报告</span>
+            </div>
+            <div class="tab-item" data-go-page="c-family">
+              <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 12l9-9 9 9M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg></div>
+              <span>家</span>
+            </div>
+          </div>
+
+          <div class="toast" id="cToast">已建立连接</div>
+
+          <!-- BOTTOM SHEET -->
+          <div class="scrim" id="scrim"></div>
+          <div class="sheet" id="sheet">
+            <div class="stack2"></div>
+            <div class="stack"></div>
+            <span class="alert-tag">URGENT · 心率骤变</span>
+            <h3>检测到父亲体征异变</h3>
+            <div class="desc">压电网络捕捉到心率较基准值偏离 +34%。系统已自动启动被动防御。</div>
+            <ul>
+              <li><span class="ok">✓</span><div>椅底 2700K 琥珀色夜灯已自动点亮</div></li>
+              <li><span class="ok">✓</span><div>靠背气囊已开启主动按摩节律</div></li>
+              <li><span class="ok">✓</span><div>智能音箱已就绪 · 等待呼叫</div></li>
+            </ul>
+            <div class="actions">
+              <button class="btn-sheet ghost" id="btnDismiss">解除预警</button>
+              <button class="btn-sheet primary" id="btnCall">立即呼叫</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="controls">
+  <button data-go="guanyun">观云 · 98°</button>
+  <button data-go="tingquan">听泉 · 102°</button>
+  <button data-go="songfeng">松风 · 112°</button>
+  <button id="btnAlert">触发体征预警</button>
+  <span class="hint">长按 ↑ 2 秒触发助起 · Tab 切页</span>
+</div>
+
+<script>
+/* =====================================================
+   Page navigation system (per app)
+   ===================================================== */
+function activatePage(app, pageName){
+  app.querySelectorAll(':scope > .page').forEach(p=>{
+    p.classList.toggle('active', p.dataset.page===pageName);
+  });
+  app.querySelectorAll('.tab-item').forEach(t=>{
+    t.classList.toggle('active', t.dataset.goPage===pageName);
+  });
+  // hide tab nav on login pages
+  const tabNav = app.querySelector('.tab-nav');
+  if(tabNav){
+    const hide = pageName.endsWith('login');
+    tabNav.style.opacity = hide ? '0' : '1';
+    tabNav.style.pointerEvents = hide ? 'none' : 'auto';
+    tabNav.style.transform = hide ? 'translateY(20px)' : 'translateY(0)';
+    tabNav.style.transition = 'all 500ms var(--ease)';
+  }
+}
+document.addEventListener('click', (e)=>{
+  const target = e.target.closest('[data-go-page]');
+  if(!target) return;
+  const app = target.closest('.app');
+  activatePage(app, target.dataset.goPage);
+});
+
+/* Login flows */
+document.getElementById('eLoginBtn').addEventListener('click', ()=>{
+  activatePage(document.getElementById('elderly'), 'e-home');
+  showEToast('欢迎回家 · 王伯伯');
+});
+document.getElementById('cLoginBtn').addEventListener('click', ()=>{
+  activatePage(document.getElementById('care'), 'c-home');
+  showCToast('已连接父亲的座椅');
+});
+document.getElementById('eLogout').addEventListener('click', ()=>{
+  activatePage(document.getElementById('elderly'), 'e-login');
+});
+document.getElementById('cLogout').addEventListener('click', ()=>{
+  activatePage(document.getElementById('care'), 'c-login');
+});
+document.getElementById('eSendCode').addEventListener('click', (e)=>{
+  const el = e.target;
+  if(el.classList.contains('disabled')) return;
+  let n = 60;
+  el.classList.add('disabled');
+  el.textContent = n + 's 后重发';
+  const t = setInterval(()=>{
+    n--;
+    if(n<=0){clearInterval(t); el.textContent='获取验证码'; el.classList.remove('disabled'); return;}
+    el.textContent = n + 's 后重发';
+  }, 1000);
+  showEToast('验证码已发送至 138****8000');
+});
+
+/* Agreement checkboxes */
+document.querySelectorAll('#eAgree, #cAgree').forEach(c=>{
+  c.addEventListener('click', ()=>c.classList.toggle('on'));
+});
+function checkAgree(id, app, msg){
+  const a = document.getElementById(id);
+  if(!a.classList.contains('on')){
+    if(app==='e') showEToast('请先勾选用户协议');
+    else showCToast('请先勾选用户协议');
+    return false;
+  }
+  return true;
+}
+/* override login click to require agreement */
+const eLoginBtnEl = document.getElementById('eLoginBtn');
+const cLoginBtnEl = document.getElementById('cLoginBtn');
+const newELogin = eLoginBtnEl.cloneNode(true);
+eLoginBtnEl.parentNode.replaceChild(newELogin, eLoginBtnEl);
+newELogin.addEventListener('click', ()=>{
+  if(!checkAgree('eAgree','e')) return;
+  activatePage(document.getElementById('elderly'), 'e-home');
+  showEToast('欢迎回家 · 王伯伯');
+});
+const newCLogin = cLoginBtnEl.cloneNode(true);
+cLoginBtnEl.parentNode.replaceChild(newCLogin, cLoginBtnEl);
+newCLogin.addEventListener('click', ()=>{
+  if(!checkAgree('cAgree','c')) return;
+  activatePage(document.getElementById('care'), 'c-home');
+  showCToast('已连接父亲的座椅');
+});
+
+/* Role cards */
+document.querySelectorAll('.role-card').forEach(rc=>{
+  rc.addEventListener('click', ()=>{
+    rc.parentElement.querySelectorAll('.role-card').forEach(r=>r.classList.remove('selected'));
+    rc.classList.add('selected');
+  });
+});
+
+/* Generic toasts */
+document.querySelectorAll('[data-toast]').forEach(el=>{
+  el.addEventListener('click', ()=>{
+    const app = el.closest('.app');
+    const msg = el.dataset.toast;
+    if(app && app.classList.contains('elderly')) showEToast(msg);
+    else showCToast(msg);
+  });
+});
+
+/* Switches */
+document.querySelectorAll('[data-switch]').forEach(sw=>{
+  sw.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    sw.classList.toggle('on');
+    const app = sw.closest('.app');
+    const msg = sw.classList.contains('on') ? '已开启' : '已关闭';
+    if(app.classList.contains('elderly')) showEToast(msg);
+    else showCToast(msg);
+  });
+});
+
+/* Sliders */
+document.querySelectorAll('[data-slider]').forEach(sl=>{
+  let dragging = false;
+  function update(e){
+    const rect = sl.getBoundingClientRect();
+    const x = (e.clientX || (e.touches && e.touches[0].clientX) || 0) - rect.left;
+    const pct = Math.max(0, Math.min(100, (x/rect.width)*100));
+    sl.querySelector('.fill').style.width = pct + '%';
+    sl.querySelector('.knob').style.left = pct + '%';
+  }
+  sl.addEventListener('mousedown', e=>{ dragging=true; update(e); });
+  sl.addEventListener('touchstart', e=>{ dragging=true; update(e); });
+  window.addEventListener('mousemove', e=>{ if(dragging) update(e); });
+  window.addEventListener('touchmove', e=>{ if(dragging) update(e); });
+  window.addEventListener('mouseup', ()=>{ dragging=false; });
+  window.addEventListener('touchend', ()=>{ dragging=false; });
+});
+
+/* =====================================================
+   Slot machine
+   ===================================================== */
+const reels = document.querySelectorAll('#slot .strip');
+function setAngle(deg){
+  const s = String(deg).padStart(3,'0');
+  reels.forEach((r,i)=>{
+    const d = parseInt(s[i],10);
+    r.style.transform = `translateY(-${d*96}px)`;
+  });
+}
+setAngle(98);
+
+/* =====================================================
+   Scenes
+   ===================================================== */
+const elderly = document.getElementById('elderly');
+const care = document.getElementById('care');
+const scenes = document.querySelectorAll('.scene');
+const totems = {
+  guanyun:  document.getElementById('totem-guanyun'),
+  tingquan: document.getElementById('totem-tingquan'),
+  songfeng: document.getElementById('totem-songfeng'),
+};
+const eToast = document.getElementById('eToast');
+const cToast = document.getElementById('cToast');
+const cMode = document.getElementById('cMode');
+const cSub  = document.getElementById('cSub');
+const chairTag = document.getElementById('chairTag');
+const cPillTxt = document.getElementById('cPillTxt');
+const modeName = document.getElementById('modeName');
+const totemTag = document.getElementById('totemTag');
+
+function showEToast(msg){
+  eToast.textContent = msg;
+  eToast.classList.add('show');
+  clearTimeout(showEToast._t);
+  showEToast._t = setTimeout(()=>eToast.classList.remove('show'), 1700);
+}
+function showCToast(msg){
+  cToast.textContent = msg;
+  cToast.classList.add('show');
+  clearTimeout(showCToast._t);
+  showCToast._t = setTimeout(()=>cToast.classList.remove('show'), 1700);
+}
+
+const sceneInfo = {
+  guanyun:  { name:'阅读模式', short:'观云', sub:'靠背 98° · 腰椎气囊 80% · 已落座 14 分钟', angle:98,  bleed:false, num:'01' },
+  tingquan: { name:'社交会客', short:'听泉', sub:'靠背 102° · 液压阻尼变软 · 已落座 14 分钟', angle:102, bleed:false, num:'02' },
+  songfeng: { name:'小憩热敷', short:'松风', sub:'靠背 112° · 加热至 42℃ · 已落座 14 分钟', angle:112, bleed:true,  num:'03' },
+};
+
+function go(scene){
+  scenes.forEach(s=>s.classList.toggle('active', s.dataset.scene===scene));
+  const info = sceneInfo[scene];
+  setAngle(info.angle);
+  Object.entries(totems).forEach(([k,el])=>el.classList.toggle('show', k===scene));
+  elderly.classList.toggle('is-songfeng', info.bleed);
+  care.classList.toggle('is-bleeding', info.bleed);
+  cMode.textContent = info.name;
+  cSub.textContent  = info.sub;
+  modeName.textContent = info.name;
+  totemTag.textContent = 'SCENE · ' + info.num;
+  chairTag.textContent = info.angle + '°';
+  cPillTxt.textContent = info.bleed ? '热敷进行中' : '一切正常';
+  showEToast('已切换 · ' + info.short + ' · ' + info.name);
+}
+
+scenes.forEach(s=> s.addEventListener('click', ()=> go(s.dataset.scene)) );
+document.querySelectorAll('.controls [data-go]').forEach(b=>{
+  b.addEventListener('click', ()=> go(b.dataset.go));
+});
+
+/* =====================================================
+   Stand assist long press
+   ===================================================== */
+const standBtn = document.getElementById('standBtn');
+let pressTimer=null, pressStart=0;
+function pressDown(e){
+  e.preventDefault();
+  standBtn.classList.remove('release-fast','charged');
+  void standBtn.offsetWidth;
+  standBtn.classList.add('pressing');
+  pressStart = Date.now();
+  pressTimer = setTimeout(()=>{
+    standBtn.classList.add('charged','haptic');
+    setTimeout(()=>standBtn.classList.remove('haptic'), 240);
+    setAngle(117);
+    cMode.textContent = '助起辅助';
+    cSub.textContent = '靠背 117° · 电动推杆介入 · 省力 30%';
+    modeName.textContent = '助起辅助';
+    chairTag.textContent = '117°';
+    showEToast('助起完成 · 请扶稳');
+    showCToast('父亲已起身 · 助起完成');
+  }, 2000);
+}
+function pressUp(){
+  clearTimeout(pressTimer);
+  const elapsed = Date.now() - pressStart;
+  if(elapsed < 2000){
+    standBtn.classList.remove('pressing');
+    standBtn.classList.add('release-fast');
+    setTimeout(()=>standBtn.classList.remove('release-fast'), 340);
+  } else {
+    setTimeout(()=>standBtn.classList.remove('pressing','charged'), 700);
+  }
+}
+standBtn.addEventListener('mousedown', pressDown);
+standBtn.addEventListener('touchstart', pressDown, {passive:false});
+standBtn.addEventListener('mouseup', pressUp);
+standBtn.addEventListener('mouseleave', pressUp);
+standBtn.addEventListener('touchend', pressUp);
+standBtn.addEventListener('touchcancel', pressUp);
+
+/* =====================================================
+   Vital wave
+   ===================================================== */
+const hrPath = document.getElementById('hrPath');
+const rrPath = document.getElementById('rrPath');
+const W = 320, N = 80;
+const hrBuf = new Array(N).fill(32);
+const rrBuf = new Array(N).fill(32);
+const hrVal = document.getElementById('hrVal');
+const rrVal = document.getElementById('rrVal');
+function pulseGen(t){
+  const phase = (t % 26) / 26;
+  if(phase < 0.04) return 28;
+  if(phase < 0.08) return 42;
+  if(phase < 0.12) return 8;
+  if(phase < 0.17) return 50;
+  return 32 + Math.sin(phase*Math.PI*2)*1.2;
+}
+function respGen(t){return 32 + Math.sin(t/24)*11;}
+function smoothPath(buf){
+  let d='';
+  for(let i=0;i<buf.length;i++){
+    const x = (i/(buf.length-1)) * W;
+    const y = buf[i];
+    if(i===0) d += `M${x.toFixed(1)} ${y.toFixed(1)}`;
+    else {
+      const px = ((i-1)/(buf.length-1)) * W;
+      const py = buf[i-1];
+      const cx = (px+x)/2;
+      d += ` Q${cx.toFixed(1)} ${py.toFixed(1)} ${((cx+x)/2).toFixed(1)} ${((py+y)/2).toFixed(1)}`;
+      d += ` T${x.toFixed(1)} ${y.toFixed(1)}`;
+    }
+  }
+  return d;
+}
+let tk=0;
+function tickWave(){
+  tk++;
+  hrBuf.shift(); hrBuf.push(pulseGen(tk));
+  rrBuf.shift(); rrBuf.push(respGen(tk));
+  hrPath.setAttribute('d', smoothPath(hrBuf));
+  rrPath.setAttribute('d', smoothPath(rrBuf));
+  if(tk%14===0){
+    const base = elderly.classList.contains('is-songfeng') ? 78 : 72;
+    hrVal.textContent = base + Math.floor(Math.random()*3 - 1);
+    rrVal.textContent = 16 + Math.floor(Math.random()*3 - 1);
+  }
+  requestAnimationFrame(tickWave);
+}
+tickWave();
+
+/* =====================================================
+   Bottom sheet alert
+   ===================================================== */
+const scrim = document.getElementById('scrim');
+const sheet = document.getElementById('sheet');
+function openAlert(){
+  activatePage(care, 'c-home');
+  care.classList.add('is-bleeding');
+  scrim.classList.add('show');
+  sheet.classList.add('show');
+}
+function closeAlert(){
+  scrim.classList.remove('show');
+  sheet.classList.remove('show');
+  const active = document.querySelector('.scene.active')?.dataset.scene || 'guanyun';
+  go(active);
+}
+document.getElementById('btnAlert').addEventListener('click', openAlert);
+document.getElementById('alertOpen').addEventListener('click', openAlert);
+scrim.addEventListener('click', closeAlert);
+document.getElementById('btnDismiss').addEventListener('click', ()=>{ showCToast('预警已解除 · 父亲安全'); closeAlert(); });
+document.getElementById('btnCall').addEventListener('click', ()=>{ showCToast('正在拨通智能音箱…'); closeAlert(); });
+
+/* Hide tab nav on initial login pages */
+['elderly','care'].forEach(id=>{
+  const app = document.getElementById(id);
+  const tabNav = app.querySelector('.tab-nav');
+  tabNav.style.opacity = '0';
+  tabNav.style.pointerEvents = 'none';
+});
+
+/* =====================================================
+   Kebab menu popover
+   ===================================================== */
+function closeAllMenus(except){
+  document.querySelectorAll('.menu-pop').forEach(m=>{
+    if(m!==except) m.classList.remove('show');
+  });
+}
+document.querySelectorAll('[data-menu]').forEach(k=>{
+  k.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    const menu = document.getElementById(k.dataset.menu);
+    if(!menu) return;
+    const willOpen = !menu.classList.contains('show');
+    closeAllMenus(menu);
+    menu.classList.toggle('show', willOpen);
+  });
+});
+document.addEventListener('click', (e)=>{
+  if(!e.target.closest('.menu-pop') && !e.target.closest('[data-menu]')) closeAllMenus();
+});
+/* Menu items that trigger nav or toast: close menu after activating */
+document.querySelectorAll('.menu-pop .mi').forEach(mi=>{
+  mi.addEventListener('click', ()=>setTimeout(closeAllMenus, 50));
+});
+
+/* =====================================================
+   Reset state on logout so re-login is clean
+   ===================================================== */
+function resetElderly(){
+  go('guanyun');
+  document.querySelectorAll('#elderly .role-card').forEach((r,i)=>r.classList.toggle('selected', i===0));
+}
+function resetCare(){
+  closeAlert();
+  document.querySelectorAll('#care .role-card').forEach((r,i)=>r.classList.toggle('selected', i===0));
+}
+document.getElementById('eLogout').addEventListener('click', resetElderly);
+document.getElementById('cLogout').addEventListener('click', resetCare);
+
+/* =====================================================
+   Voice FAB & listening sheet
+   ===================================================== */
+const voiceFab = document.getElementById('voiceFab');
+const voiceSheet = document.getElementById('voiceSheet');
+const vmsg = document.getElementById('vmsg');
+const responseScript = [
+  '您好，我是松小颐',
+  '正在为您倾听'
+];
+let voiceTimer = null;
+function openVoice(){
+  voiceSheet.classList.add('show');
+  vmsg.innerHTML = responseScript[0] + '<span class="blink"></span>';
+  clearTimeout(voiceTimer);
+  voiceTimer = setTimeout(()=>{
+    vmsg.innerHTML = responseScript[1] + '<span class="blink"></span>';
+  }, 1400);
+}
+function closeVoice(){voiceSheet.classList.remove('show');}
+voiceFab.addEventListener('click', openVoice);
+document.getElementById('voiceClose').addEventListener('click', closeVoice);
+document.querySelectorAll('[data-vchip]').forEach(c=>{
+  c.addEventListener('click', ()=>{
+    const v = c.dataset.vchip;
+    vmsg.textContent = '好的，' + c.textContent.replace(/[「」]/g,'');
+    setTimeout(()=>{
+      closeVoice();
+      if(v==='songfeng' || v==='guanyun' || v==='tingquan') go(v);
+      else if(v==='callKid') showEToast('正在呼叫女儿小红…');
+      else if(v==='weather') showEToast('北京晴 23–32℃，西南风 2 级');
+    }, 700);
+  });
+});
+
+/* Hide voice fab on login & deep pages */
+function syncVoiceFab(){
+  const activeP = document.querySelector('#elderly > .page.active');
+  const name = activeP?.dataset.page || '';
+  const show = name === 'e-home' || name === 'e-health';
+  voiceFab.style.display = show ? 'flex' : 'none';
+}
+const origActivate = activatePage;
+activatePage = function(app, pageName){
+  origActivate(app, pageName);
+  syncVoiceFab();
+  closeAllMenus();
+  closeNotify();
+};
+syncVoiceFab();
+
+/* =====================================================
+   Segmented tabs (health page)
+   ===================================================== */
+document.querySelectorAll('[data-seg]').forEach(seg=>{
+  seg.addEventListener('click', (e)=>{
+    const t = e.target.closest('.seg-tab');
+    if(!t) return;
+    seg.querySelectorAll('.seg-tab').forEach(x=>x.classList.toggle('active', x===t));
+    const v = t.dataset.segVal;
+    const num = document.getElementById('healthNum');
+    const unit = document.getElementById('healthUnit');
+    const lbl = document.getElementById('healthLbl');
+    const trend = document.getElementById('healthTrend');
+    if(v==='day'){ lbl.textContent='今日落座'; num.textContent='3'; unit.textContent='小时 24 分'; trend.textContent='较昨日 -18 分';}
+    if(v==='week'){lbl.textContent='本周累计落座'; num.textContent='24'; unit.textContent='小时 18 分'; trend.textContent='较上周 -2.1h';}
+    if(v==='month'){lbl.textContent='本月累计落座'; num.textContent='98'; unit.textContent='小时 42 分'; trend.textContent='较上月 +4.2h';}
+  });
+});
+
+/* =====================================================
+   Notification bell (caregiver)
+   ===================================================== */
+const cNotify = document.getElementById('cNotify');
+const cBell = document.getElementById('cBell');
+function closeNotify(){cNotify && cNotify.classList.remove('show');}
+cBell.addEventListener('click', (e)=>{
+  e.stopPropagation();
+  closeAllMenus();
+  cNotify.classList.toggle('show');
+});
+document.addEventListener('click', (e)=>{
+  if(!e.target.closest('#cNotify') && !e.target.closest('#cBell')) closeNotify();
+});
+
+/* =====================================================
+   Alert detail navigation
+   ===================================================== */
+document.querySelectorAll('.alert-card').forEach(a=>{
+  if(a.id==='alertOpen') return; // first card opens the urgent sheet for demo
+  a.addEventListener('click', ()=>{
+    activatePage(care, 'c-alert-detail');
+  });
+});
+const resolveBtn = document.getElementById('resolveAlert');
+if(resolveBtn) resolveBtn.addEventListener('click', ()=>{
+  showCToast('已标记为已处理');
+  setTimeout(()=>activatePage(care, 'c-alerts'), 600);
+});
+
+/* =====================================================
+   Family member detail
+   ===================================================== */
+document.querySelectorAll('.family-card').forEach(fc=>{
+  fc.addEventListener('click', ()=>{
+    activatePage(care, 'c-member-detail');
+  });
+});
+
+/* =====================================================
+   Chair Live HUD sheet
+   ===================================================== */
+const chairArt = document.getElementById('chairArt');
+const hudScrim = document.getElementById('hudScrim');
+const hudSheet = document.getElementById('hudSheet');
+const hudHeat = document.getElementById('hudHeat');
+function openHud(){
+  // adjust heat based on scene
+  const isSong = elderly.classList.contains('is-songfeng');
+  hudHeat.innerHTML = isSong ? '42<span class="u">℃</span>' : '23<span class="u">℃</span>';
+  hudScrim.classList.add('show');
+  hudSheet.classList.add('show');
+}
+function closeHud(){hudScrim.classList.remove('show');hudSheet.classList.remove('show');}
+chairArt.addEventListener('click', openHud);
+document.getElementById('hudClose').addEventListener('click', closeHud);
+hudScrim.addEventListener('click', (e)=>{ if(e.target===hudScrim) closeHud(); });
+
+/* =====================================================
+   Responsive stage scaling — keep both phones visible on small screens
+   ===================================================== */
+function fitStage(){
+  const stage = document.querySelector('.stage');
+  if(!stage) return;
+  // natural size: 2 phones (390 each) + 60 gap = 840
+  const target = 880;
+  const avail = window.innerWidth - 24;
+  const scale = Math.min(1, avail/target);
+  stage.style.transform = `scale(${scale})`;
+  stage.style.transformOrigin = 'top center';
+  document.body.style.minHeight = (window.innerHeight) + 'px';
+}
+window.addEventListener('resize', fitStage);
+fitStage();
+</script>
+</body>
+</html>
