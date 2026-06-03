@@ -1,0 +1,2529 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>坐享其美 · 智能适老化座椅全链路研发汇报</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700;900&amp;family=Noto+Sans+SC:wght@400;500;600;700&amp;family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&amp;family=JetBrains+Mono:wght@500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+/* ════════════════════════════════════════════════════════════
+   DESIGN TOKENS  ·  统一设计变量
+═══════════════════════════════════════════════════════════ */
+:root {
+  --bg: #F3F1EB;
+  --bg-2: #E7E3D9;
+  --paper: #FBFAF6;
+  --ink: #14160E;
+  --ink-soft: #3A3D31;
+  --ink-mute: #797B71;
+  --line: #D6D2C6;
+  --line-soft: #E6E2D5;
+
+  --moss: #5F7A3F;
+  --moss-deep: #2C3D17;
+  --moss-soft: #8FA665;
+  --moss-tint: #DCE5C3;
+  --amber: #B86A1A;
+  --neon: #C2EE5B;
+  --warn: #B0451E;
+
+  --f-serif: 'Noto Serif SC', 'Source Han Serif', serif;
+  --f-sans:  'Noto Sans SC', -apple-system, sans-serif;
+  --f-cormo: 'Cormorant Garamond', Georgia, serif;
+  --f-mono:  'JetBrains Mono', ui-monospace, monospace;
+
+  --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --ctrl-h: 96px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); }
+body {
+  font-family: var(--f-sans);
+  color: var(--ink);
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: 0.01em;
+}
+img, video { display: block; max-width: 100%; user-select: none; -webkit-user-drag: none; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+
+/* ════════════════════════════════════════════════════════════
+   VIEWPORT  ·  视口 + 1920×1080 等比舞台
+═══════════════════════════════════════════════════════════ */
+.viewport {
+  position: fixed; inset: 0 0 var(--ctrl-h) 0;
+  display: grid; place-items: center;
+  background: var(--bg);
+  overflow: hidden;
+  /* 为 Z 轴 3D 推拉提供透视景深 */
+  perspective: 2400px;
+  perspective-origin: center center;
+  transition: inset 0.7s cubic-bezier(0.76, 0, 0.24, 1);
+}
+.stage {
+  width: 1920px; height: 1080px;
+  position: relative;
+  transform-origin: center;
+  transform-style: preserve-3d;
+  background: var(--bg);
+}
+body.fullvid .viewport { inset: 0; background: #08080A; }
+body.fullvid .controller { opacity: 0; transform: translateX(-50%) translateY(36px); pointer-events: none; }
+
+/* ════════════════════════════════════════════════════════════
+   SLIDE BASE  ·  无空白交叉淡化
+   · 关键：旧策略中的 translateZ + scale 会让两页在转场中段缩小，
+     露出舞台底色形成"空白瞬间"。此版本完全移除 transform，
+     只用纯 opacity 交叉淡化。
+   · 新页 z-index 永远在上，旧页在下；任何瞬间屏幕都被实色覆盖
+   · 元素 reveal 自带错层进入，承担"电影感"
+═══════════════════════════════════════════════════════════ */
+.slide {
+  position: absolute; inset: 0;
+  background: var(--bg);          /* 每页实色铺底 */
+  visibility: hidden;
+  opacity: 0;
+  overflow: hidden;
+  transition: opacity 0.55s cubic-bezier(0.32, 0.72, 0.20, 1),
+              visibility 0s linear 0.55s;
+  will-change: opacity;
+}
+.slide.active {
+  visibility: visible;
+  opacity: 1;
+  z-index: 10;                    /* 新页永远在最上 */
+  transition: opacity 0.55s cubic-bezier(0.32, 0.72, 0.20, 1),
+              visibility 0s linear 0s;
+}
+.slide.leaving {
+  visibility: visible;
+  opacity: 0;                     /* 同步淡出 */
+  z-index: 9;                     /* 在新页之下，承接铺底 */
+  pointer-events: none;
+  transition: opacity 0.55s cubic-bezier(0.32, 0.72, 0.20, 1),
+              visibility 0s linear 0.55s;
+}
+
+/* ════════════════════════════════════════════════════════════
+   REVEAL  ·  错层元素进场（与底层 crossfade 同步开始）
+   · 首个 d1 元素延时 0s — 新页面在 opacity 完成时已有内容浮现
+   · 整体 0.8s 入场，避免观感空旷
+═══════════════════════════════════════════════════════════ */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity   0.80s cubic-bezier(0.22, 0.85, 0.32, 1),
+              transform 0.80s cubic-bezier(0.22, 0.85, 0.32, 1);
+}
+.slide.active .reveal { opacity: 1; transform: translateY(0); }
+.spring {
+  opacity: 0;
+  transform: scale(0.96) translateY(16px);
+  transition: opacity   0.80s var(--ease-spring),
+              transform 0.80s var(--ease-spring);
+}
+.slide.active .spring { opacity: 1; transform: scale(1) translateY(0); }
+.slide.active .d1 { transition-delay: 0s; }
+.slide.active .d2 { transition-delay: .08s; }
+.slide.active .d3 { transition-delay: .18s; }
+.slide.active .d4 { transition-delay: .30s; }
+.slide.active .d5 { transition-delay: .42s; }
+.slide.active .d6 { transition-delay: .55s; }
+.slide.active .d7 { transition-delay: .68s; }
+.slide.active .d8 { transition-delay: .82s; }
+
+/* ════════════════════════════════════════════════════════════
+   TYPOGRAPHY  ·  大字号画册级排版
+═══════════════════════════════════════════════════════════ */
+.eyebrow {
+  font-family: var(--f-mono); font-size: 14px; font-weight: 700;
+  letter-spacing: 0.32em; text-transform: uppercase; color: var(--moss);
+  display: inline-flex; align-items: center; gap: 14px;
+}
+.eyebrow::before { content: ''; width: 32px; height: 1.5px; background: currentColor; }
+
+.h-hero    { font-family: var(--f-serif); font-weight: 900; font-size: 260px; line-height: 0.86; letter-spacing: -0.04em; color: var(--ink); }
+.h-hero em { color: var(--moss); font-style: italic; }
+.h-mega    { font-family: var(--f-serif); font-weight: 900; font-size: 96px;  line-height: 1.05; letter-spacing: -0.02em; color: var(--ink); }
+.h-mega em { color: var(--moss); font-style: italic; }
+.h-page    { font-family: var(--f-serif); font-weight: 800; font-size: 76px;  line-height: 1.08; letter-spacing: -0.015em; color: var(--ink); }
+.h-page em { color: var(--moss); font-style: italic; }
+.h-sec     { font-family: var(--f-serif); font-weight: 700; font-size: 52px;  line-height: 1.15; color: var(--ink); }
+.h-sec em  { color: var(--moss); font-style: italic; }
+.h-card    { font-family: var(--f-serif); font-weight: 700; font-size: 30px;  line-height: 1.25; color: var(--ink); }
+
+.body-xl   { font-family: var(--f-serif); font-weight: 500; font-size: 22px; line-height: 1.85; color: var(--ink-soft); }
+.body-lg   { font-family: var(--f-serif); font-weight: 500; font-size: 20px; line-height: 1.8;  color: var(--ink-soft); }
+.body-md   { font-family: var(--f-serif); font-weight: 500; font-size: 18px; line-height: 1.78; color: var(--ink-soft); }
+.body-sm   { font-family: var(--f-sans);  font-weight: 500; font-size: 16px; line-height: 1.7;  color: var(--ink-soft); }
+.body-tiny { font-family: var(--f-mono);  font-weight: 600; font-size: 13px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-mute); }
+
+/* ════════════════════════════════════════════════════════════
+   PAGE CHROME  ·  页眉 meta + 品牌 brand
+═══════════════════════════════════════════════════════════ */
+.meta {
+  position: absolute; top: 48px; left: 80px; z-index: 7;
+  display: flex; align-items: center; gap: 18px;
+  font-family: var(--f-mono); font-size: 13px; font-weight: 600;
+  letter-spacing: 0.24em; color: var(--ink-mute); text-transform: uppercase;
+}
+.meta .n   { color: var(--ink); font-weight: 700; }
+.meta .seg { width: 56px; height: 1px; background: var(--line); }
+.brand {
+  position: absolute; top: 48px; right: 80px; z-index: 7;
+  font-family: var(--f-cormo); font-style: italic; font-weight: 600;
+  font-size: 22px; color: var(--ink-soft); letter-spacing: 0.04em;
+}
+.brand::before { content: '·'; color: var(--moss); font-size: 30px; vertical-align: middle; margin-right: 10px; }
+
+/* ════════════════════════════════════════════════════════════
+   MEDIA CONTAINER  ·  骨架屏 + 图像缩放/平移变量
+═══════════════════════════════════════════════════════════ */
+.media {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-2);
+  border-radius: 18px;
+  isolation: isolate;
+}
+.media::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(110deg, #E7E3D9 0%, #F2EFE6 35%, #FBFAF6 50%, #F2EFE6 65%, #E7E3D9 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+  z-index: 0; pointer-events: none;
+}
+.media.loaded::before { animation: none; opacity: 0; transition: opacity 0.4s ease; }
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -100% 0; }
+}
+.media > img, .media > video {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.6s var(--ease-out);
+  --sc: 1; --px: 50%; --py: 50%;
+  object-position: var(--px) var(--py);
+  transform: scale(var(--sc));
+  transform-origin: center center;
+  will-change: transform, object-position;
+}
+.media > iframe {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  border: none; z-index: 1;
+  opacity: 0;
+  transition: opacity 0.6s var(--ease-out);
+  background: #fff;
+}
+.media > img.loaded,
+.media > video.loaded,
+.media > iframe.loaded { opacity: 1; }
+.media.contain > img, .media.contain > video { object-fit: contain; }
+
+/* ════════════════════════════════════════════════════════════
+   EDIT MODE  ·  容器外框 + 内部图像 双重编辑
+═══════════════════════════════════════════════════════════ */
+body.editing .media { outline: 2px solid var(--moss); outline-offset: -2px; cursor: grab; }
+body.editing .media:active { cursor: grabbing; }
+body.editing .media.dragging { outline-color: var(--amber); outline-width: 2.5px; }
+body.editing .media.moving { outline-color: var(--neon); }
+
+/* 角点 + 移动 grip 手柄 */
+.media-handles { position: absolute; inset: 0; pointer-events: none; z-index: 24; display: none; }
+body.editing .media .media-handles { display: block; }
+.media-handles .hd, .media-handles .grip {
+  position: absolute;
+  background: #fff;
+  border: 2.5px solid var(--moss);
+  pointer-events: auto;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.25);
+  transition: transform 0.15s, background 0.15s;
+}
+.media-handles .hd { width: 14px; height: 14px; border-radius: 3px; }
+.media-handles .hd:hover { transform: scale(1.35); background: var(--moss); }
+.media-handles .hd.nw { top: -8px; left: -8px;     cursor: nwse-resize; }
+.media-handles .hd.ne { top: -8px; right: -8px;    cursor: nesw-resize; }
+.media-handles .hd.sw { bottom: -8px; left: -8px;  cursor: nesw-resize; }
+.media-handles .hd.se { bottom: -8px; right: -8px; cursor: nwse-resize; }
+.media-handles .grip {
+  top: -12px; left: 50%; transform: translateX(-50%);
+  width: 44px; height: 18px;
+  border-radius: 9px;
+  border-color: var(--amber);
+  cursor: move;
+  display: grid; place-items: center;
+}
+.media-handles .grip::before {
+  content: '⋮⋮'; color: var(--amber); font-size: 14px; font-weight: 900;
+  letter-spacing: -2px;
+}
+.media-handles .grip:hover { background: var(--amber); }
+.media-handles .grip:hover::before { color: #fff; }
+
+/* 工具条 */
+.media-tools {
+  position: absolute; top: 14px; right: 14px;
+  z-index: 30;
+  display: none; gap: 6px;
+  padding: 6px;
+  background: rgba(15,18,8,0.88);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.3);
+}
+body.editing .media:hover .media-tools,
+body.editing .media.dragging .media-tools,
+body.editing .media.moving .media-tools { display: flex; }
+.media-tools button {
+  width: 32px; height: 32px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  display: grid; place-items: center;
+  font-family: var(--f-mono); font-size: 15px; font-weight: 700;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+.media-tools button:hover { background: var(--moss); transform: translateY(-1px); }
+
+.media-hint {
+  position: absolute; bottom: 14px; left: 14px;
+  z-index: 28;
+  display: none;
+  padding: 7px 14px;
+  background: rgba(15,18,8,0.88);
+  backdrop-filter: blur(12px);
+  color: #fff;
+  font-family: var(--f-mono); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.18em;
+  border-radius: 100px;
+  pointer-events: none;
+}
+body.editing .media:hover .media-hint { display: block; }
+.media-badge {
+  position: absolute; top: -36px; left: 0;
+  z-index: 28;
+  display: none;
+  padding: 5px 12px;
+  background: var(--moss);
+  color: #fff;
+  font-family: var(--f-mono); font-size: 12px; font-weight: 700;
+  letter-spacing: 0.08em;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+body.editing .media:hover .media-badge,
+body.editing .media.dragging .media-badge,
+body.editing .media.moving .media-badge { display: block; }
+
+/* 可编辑文本 */
+body.editing [data-edit] {
+  outline: 1px dashed rgba(95,122,63,0.55);
+  outline-offset: 4px;
+  cursor: text;
+  border-radius: 2px;
+}
+body.editing [data-edit]:hover { outline-color: var(--moss); background: rgba(95,122,63,0.04); }
+body.editing [data-edit]:focus { outline: 1.5px solid var(--moss); background: rgba(95,122,63,0.06); }
+
+/* 通用容器拖拽：编辑态下按住 Alt 或开启移动模式 可拖动任何块 */
+body.editing .block-moving { outline: 2px solid var(--amber) !important; outline-offset: 4px; opacity: 0.92; }
+body.editing.alt-pressed .block-draggable:hover,
+body.editing.move-mode .block-draggable:hover {
+  outline: 1.5px dashed var(--amber);
+  outline-offset: 6px;
+  cursor: move;
+}
+body.editing.move-mode .block-draggable { cursor: move; }
+body.editing.move-mode [data-edit] { pointer-events: none; }
+body.editing.move-mode .expand-card,
+body.editing.move-mode [data-modal] { pointer-events: auto; }
+.alt-tip {
+  position: fixed; bottom: 90px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 1400;
+  display: none;
+  padding: 10px 22px;
+  background: rgba(184,106,26,0.95);
+  backdrop-filter: blur(14px);
+  color: #fff;
+  font-family: var(--f-mono); font-size: 12px; font-weight: 700;
+  letter-spacing: 0.18em;
+  border-radius: 100px;
+  box-shadow: 0 12px 30px rgba(184,106,26,0.4);
+  pointer-events: none;
+}
+body.editing .alt-tip { display: block; opacity: 0.85; }
+
+/* 文字样式浮动工具栏 */
+#textTools {
+  position: fixed; z-index: 2000; display: none;
+  gap: 4px; align-items: center;
+  padding: 6px 8px;
+  background: rgba(20,30,15,0.94);
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 10px;
+  box-shadow: 0 14px 36px rgba(0,0,0,0.35);
+  font-family: var(--f-sans);
+}
+#textTools select, #textTools button, #textTools input {
+  font-family: var(--f-sans);
+  font-size: 12px; font-weight: 600;
+  color: #fff;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  padding: 6px 10px;
+  outline: none;
+  cursor: pointer;
+}
+#textTools button:hover { background: var(--moss); }
+#textTools input { width: 58px; text-align: center; }
+#textTools .tt-divider { width: 1px; height: 22px; background: rgba(255,255,255,0.15); margin: 0 4px; }
+#textTools .tt-label { color: rgba(255,255,255,0.55); font-family: var(--f-mono); font-size: 10px; letter-spacing: 0.16em; padding: 0 4px; }
+#textTools option { color: #000; background: #fff; }
+
+/* ════════════════════════════════════════════════════════════
+   GLASS CARD  ·  类玻璃拟物化 + 点击展开提示
+═══════════════════════════════════════════════════════════ */
+.glass {
+  background: rgba(255,255,255,0.62);
+  backdrop-filter: blur(28px) saturate(170%);
+  -webkit-backdrop-filter: blur(28px) saturate(170%);
+  border: 1px solid rgba(255,255,255,0.7);
+  border-radius: 22px;
+  box-shadow: 0 28px 70px -22px rgba(40,50,20,0.18),
+              0 0 0 1px rgba(255,255,255,0.4) inset,
+              0 1px 0 rgba(255,255,255,0.7) inset;
+}
+.glass.dark {
+  background: rgba(15,18,8,0.78);
+  border-color: rgba(255,255,255,0.12);
+  color: #fff;
+  box-shadow: 0 28px 70px -18px rgba(0,0,0,0.5),
+              0 0 0 1px rgba(255,255,255,0.08) inset;
+}
+
+/* 可展开卡片 */
+.expand-card {
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.5s var(--ease-out), box-shadow 0.5s var(--ease-out);
+}
+.expand-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 38px 80px -22px rgba(40,50,20,0.25),
+              0 0 0 1px rgba(255,255,255,0.5) inset;
+}
+.expand-card .expand-hint {
+  position: absolute; top: 18px; right: 18px;
+  z-index: 5;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 14px;
+  background: var(--moss);
+  color: #fff;
+  font-family: var(--f-mono); font-size: 11.5px; font-weight: 700;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  border-radius: 100px;
+  box-shadow: 0 8px 20px rgba(95,122,63,0.35);
+}
+.expand-card .expand-hint::before {
+  content: '+'; font-size: 16px; font-weight: 900;
+  width: 16px; height: 16px;
+  display: grid; place-items: center;
+  background: rgba(255,255,255,0.25);
+  border-radius: 50%;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+.expand-card.dark .expand-hint { background: var(--neon); color: var(--moss-deep); }
+@keyframes pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,255,255,0.5); }
+  50%      { transform: scale(1.15); box-shadow: 0 0 0 6px rgba(255,255,255,0); }
+}
+
+/* ════════════════════════════════════════════════════════════
+   MODAL  ·  全屏毛玻璃模态弹窗（电影级开启动效）
+   · 背景模糊从 0 渐增到 18px（避免突然打闷镜头）
+   · 弹窗 spring 缩放 + 轻 3D 倾斜回正
+   · 内部文字与图片错层进入
+═══════════════════════════════════════════════════════════ */
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(15,18,8,0);
+  backdrop-filter: blur(0px) saturate(100%);
+  -webkit-backdrop-filter: blur(0px) saturate(100%);
+  z-index: 2000;
+  display: none;
+  opacity: 0;
+  perspective: 1800px;
+  transition: opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+              background 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+              backdrop-filter 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+              -webkit-backdrop-filter 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.modal-backdrop.open {
+  display: grid; place-items: center; opacity: 1;
+  background: rgba(15,18,8,0.58);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+}
+
+.modal {
+  position: relative;
+  width: min(1280px, 86vw);
+  max-height: 86vh;
+  background: rgba(255,250,240,0.97);
+  border: 1px solid rgba(255,255,255,0.7);
+  border-radius: 28px;
+  box-shadow: 0 80px 140px rgba(0,0,0,0.45),
+              0 30px 70px rgba(40,50,20,0.25),
+              0 0 0 1px rgba(255,255,255,0.4) inset;
+  overflow: hidden;
+  transform: scale(0.68) translateY(80px) rotateX(10deg);
+  opacity: 0;
+  transform-origin: center 40%;
+  transform-style: preserve-3d;
+  transition: transform 0.90s cubic-bezier(0.34, 1.32, 0.42, 1),
+              opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.modal-backdrop.open .modal {
+  transform: scale(1) translateY(0) rotateX(0);
+  opacity: 1;
+}
+
+.modal-grid { display: grid; grid-template-columns: 1.3fr 1fr; max-height: 86vh; }
+.modal-text { padding: 56px 64px; overflow-y: auto; max-height: 86vh; }
+.modal-img { background: var(--bg-2); position: relative; min-height: 540px; overflow: hidden; }
+.modal-img img {
+  width: 100%; height: 100%; object-fit: cover;
+  opacity: 0;
+  transform: scale(1.08);
+  transition: opacity .85s var(--ease-out), transform 1.2s var(--ease-out);
+  transition-delay: 0.25s;
+}
+.modal-backdrop.open .modal-img img.loaded { opacity: 1; transform: scale(1); }
+
+/* 模态内部文字错层进入 */
+.modal-text > * {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.7s var(--ease-out), transform 0.7s var(--ease-out);
+}
+.modal-backdrop.open .modal-text > * { opacity: 1; transform: translateY(0); }
+.modal-backdrop.open .modal-text > *:nth-child(1) { transition-delay: 0.22s; }
+.modal-backdrop.open .modal-text > *:nth-child(2) { transition-delay: 0.32s; }
+.modal-backdrop.open .modal-text > *:nth-child(3) { transition-delay: 0.42s; }
+.modal-backdrop.open .modal-text > *:nth-child(4) { transition-delay: 0.52s; }
+.modal-backdrop.open .modal-text > *:nth-child(5) { transition-delay: 0.62s; }
+.modal-backdrop.open .modal-text > *:nth-child(n+6) { transition-delay: 0.70s; }
+/* 数据行各自错层 */
+.modal-text .data-grid .row {
+  opacity: 0;
+  transform: translateX(-16px);
+  transition: opacity 0.55s var(--ease-out), transform 0.55s var(--ease-out);
+}
+.modal-backdrop.open .modal-text .data-grid .row { opacity: 1; transform: translateX(0); }
+.modal-backdrop.open .modal-text .data-grid .row:nth-child(1) { transition-delay: 0.55s; }
+.modal-backdrop.open .modal-text .data-grid .row:nth-child(2) { transition-delay: 0.62s; }
+.modal-backdrop.open .modal-text .data-grid .row:nth-child(3) { transition-delay: 0.69s; }
+.modal-backdrop.open .modal-text .data-grid .row:nth-child(4) { transition-delay: 0.76s; }
+.modal-backdrop.open .modal-text .data-grid .row:nth-child(5) { transition-delay: 0.83s; }
+.modal-backdrop.open .modal-text .data-grid .row:nth-child(6) { transition-delay: 0.90s; }
+.modal-backdrop.open .modal-text .data-grid .row:nth-child(7) { transition-delay: 0.97s; }
+.modal-backdrop.open .modal-text .data-grid .row:nth-child(8) { transition-delay: 1.04s; }
+.modal-backdrop.open .modal-text .data-grid .row:nth-child(9) { transition-delay: 1.11s; }
+.modal-backdrop.open .modal-text .data-grid .row:nth-child(n+10) { transition-delay: 1.18s; }
+
+/* 点击卡片时的回弹反馈 */
+.expand-card { transition: transform 0.5s var(--ease-out), box-shadow 0.5s var(--ease-out); }
+.expand-card:active { transform: scale(0.985); }
+.expand-card.popping {
+  animation: cardPop 0.42s cubic-bezier(0.34, 1.4, 0.42, 1) both;
+}
+@keyframes cardPop {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.03); box-shadow: 0 38px 80px -20px rgba(95,122,63,0.32), 0 0 0 1px var(--moss) inset; }
+  100% { transform: scale(1); }
+}
+
+.modal-text .m-eye { font-family: var(--f-mono); font-size: 13px; font-weight: 700; letter-spacing: 0.28em; color: var(--moss); text-transform: uppercase; }
+.modal-text h3 { font-family: var(--f-serif); font-weight: 800; font-size: 52px; line-height: 1.1; margin: 18px 0 24px; letter-spacing: -0.01em; color: var(--ink); }
+.modal-text h3 em { color: var(--moss); font-style: italic; }
+.modal-text .lead { font-family: var(--f-serif); font-size: 19px; line-height: 1.8; color: var(--ink-soft); margin-bottom: 30px; }
+.modal-text .data-grid { display: grid; gap: 16px; margin-bottom: 28px; }
+.modal-text .data-grid .row {
+  padding: 18px 22px;
+  background: rgba(95,122,63,0.06);
+  border-left: 3px solid var(--moss);
+  border-radius: 0 12px 12px 0;
+}
+.modal-text .data-grid .row .k { font-family: var(--f-mono); font-size: 11.5px; font-weight: 700; letter-spacing: 0.2em; color: var(--moss); text-transform: uppercase; margin-bottom: 6px; }
+.modal-text .data-grid .row .v { font-family: var(--f-serif); font-size: 18px; font-weight: 600; color: var(--ink); line-height: 1.5; }
+.modal-text .data-grid .row .v strong { color: var(--moss); font-size: 22px; }
+.modal-text .src { font-family: var(--f-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.18em; color: var(--ink-mute); text-transform: uppercase; padding-top: 16px; border-top: 1px solid var(--line); }
+.modal-close {
+  position: absolute; top: 22px; right: 22px;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: rgba(15,18,8,0.85);
+  color: #fff;
+  display: grid; place-items: center;
+  font-size: 22px; font-weight: 300;
+  z-index: 5;
+  transition: background 0.2s, transform 0.2s;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+}
+.modal-close:hover { background: var(--moss); transform: rotate(90deg); }
+
+/* ════════════════════════════════════════════════════════════
+   TOOLBAR  ·  顶部右浮动工具栏
+═══════════════════════════════════════════════════════════ */
+.toolbar {
+  position: fixed; top: 22px; right: 26px; z-index: 1500;
+  display: flex; gap: 8px;
+  padding: 8px;
+  background: rgba(255,255,255,0.74);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  border: 1px solid rgba(255,255,255,0.7);
+  border-radius: 14px;
+  box-shadow: 0 14px 40px rgba(40,50,20,0.10), 0 1px 0 rgba(255,255,255,0.8) inset;
+}
+.tool-btn {
+  padding: 10px 18px;
+  font-family: var(--f-mono); font-size: 12.5px; font-weight: 700;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--ink-soft);
+  border-radius: 8px;
+  transition: all 0.3s var(--ease-out);
+  display: inline-flex; align-items: center; gap: 7px;
+}
+.tool-btn:hover { background: rgba(95,122,63,0.12); color: var(--moss); }
+.tool-btn.active { background: var(--moss); color: #fff; box-shadow: 0 5px 16px rgba(95,122,63,0.4); }
+.tool-btn.primary { background: var(--ink); color: #fff; }
+.tool-btn.primary:hover { background: var(--moss-deep); color: #fff; }
+
+/* ════════════════════════════════════════════════════════════
+   CONTROLLER  ·  底部翻页控制器
+═══════════════════════════════════════════════════════════ */
+.controller {
+  position: fixed; bottom: 22px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 999;
+  display: flex; align-items: center; gap: 22px;
+  padding: 10px 18px;
+  background: rgba(255,255,255,0.74);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  border: 1px solid rgba(255,255,255,0.7);
+  border-radius: 100px;
+  box-shadow: 0 14px 40px rgba(40,50,20,0.10);
+  transition: opacity 0.5s var(--ease-out), transform 0.5s var(--ease-out);
+}
+.nav-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  display: grid; place-items: center;
+  color: var(--ink);
+  transition: all 0.3s var(--ease-out);
+}
+.nav-btn:hover { background: var(--ink); color: #fff; border-color: var(--ink); }
+.nav-btn:disabled { opacity: 0.3; pointer-events: none; }
+.nav-btn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2.5; }
+.progress { position: relative; width: 260px; height: 2px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.progress-fill { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, var(--moss), var(--moss-soft)); border-radius: 2px; transition: width 0.8s var(--ease-out); }
+.indicator { font-family: var(--f-mono); font-size: 13px; font-weight: 700; letter-spacing: 0.18em; color: var(--ink-soft); min-width: 78px; text-align: center; }
+.indicator .cur { color: var(--ink); }
+
+/* ════════════════════════════════════════════════════════════
+   ░░░░░░░░░░░░░░░░  PER-SLIDE LAYOUTS  ░░░░░░░░░░░░░░░░
+═══════════════════════════════════════════════════════════ */
+
+/* ─── 1 · COVER ─────────────────────────────────────────── */
+.s1 { padding: 96px 80px 80px; }
+.s1 .grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 60px; height: 100%; align-items: center; }
+.s1 .left { display: flex; flex-direction: column; justify-content: space-between; height: 100%; padding-top: 14px; }
+.s1 .left h1 { margin-top: 30px; }
+.s1 .sub-en { margin-top: 28px; font-family: var(--f-cormo); font-style: italic; font-weight: 500; font-size: 40px; color: var(--moss-deep); }
+.s1 .sub-zh { margin-top: 18px; max-width: 520px; font-family: var(--f-serif); font-size: 21px; font-weight: 500; line-height: 1.85; color: var(--ink-soft); }
+.s1 .meta-row {
+  margin-top: 50px; padding-top: 30px;
+  border-top: 1px solid var(--line);
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px;
+}
+.s1 .meta-row .k { font-family: var(--f-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.22em; color: var(--ink-mute); text-transform: uppercase; margin-bottom: 8px; }
+.s1 .meta-row .v { font-size: 18px; font-weight: 700; color: var(--ink); }
+.s1 .right { position: relative; height: 100%; perspective: 1600px; }
+.s1 .right .media {
+  position: absolute; inset: 4% 0 4% 4%;
+  border-radius: 32px;
+  transform: rotateY(-7deg) rotateZ(1deg);
+  box-shadow: 0 60px 110px -30px rgba(40,50,20,0.32),
+              0 30px 60px -25px rgba(0,0,0,0.25);
+}
+.s1 .stamp {
+  position: absolute; top: -10px; left: -10px;
+  width: 150px; height: 150px;
+  border-radius: 50%;
+  background: var(--moss);
+  color: #fff;
+  display: grid; place-items: center;
+  text-align: center;
+  font-family: var(--f-cormo); font-style: italic; font-weight: 700;
+  font-size: 25px; line-height: 1.12;
+  z-index: 5;
+  transform: rotate(-12deg);
+  box-shadow: 0 20px 50px rgba(95,122,63,0.5);
+}
+
+/* ─── 2 · FIELD RESEARCH ────────────────────────────────── */
+.s2 { padding: 110px 80px 70px; }
+.s2 .grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 64px; height: 100%; }
+.s2 .photos { position: relative; }
+.s2 .photo {
+  position: absolute;
+  border-radius: 22px;
+  background: var(--paper);
+  box-shadow: 0 50px 90px -25px rgba(20,25,10,0.28),
+              0 0 0 1px rgba(255,255,255,0.45) inset;
+}
+/* 第二页图片防裁切：完整显示原图，留出米白底色 */
+.s2 .photo > img { object-fit: contain !important; padding: 14px; }
+.s2 .photo::before { background: linear-gradient(110deg, #F4F0E5 0%, #FBFAF6 50%, #F4F0E5 100%); background-size: 200% 100%; }
+.s2 .photo.a { width: 78%; height: 64%; top: 0; left: 0; transform: rotate(-2deg); z-index: 1; }
+.s2 .photo.b { width: 72%; height: 60%; bottom: 0; right: 0; transform: rotate(3deg); z-index: 2; }
+.s2 .info { display: flex; flex-direction: column; gap: 24px; padding-top: 8px; }
+.s2 .info p { margin-bottom: 4px; }
+.s2 .info .quote-card {
+  margin-top: 8px;
+  padding: 26px 30px;
+  border-left: 3px solid var(--moss);
+  background: rgba(95,122,63,0.06);
+  border-radius: 0 16px 16px 0;
+}
+.s2 .info .quote-card .q { font-family: var(--f-serif); font-style: italic; font-size: 22px; line-height: 1.7; color: var(--ink); font-weight: 500; }
+.s2 .info .quote-card .who { margin-top: 14px; font-family: var(--f-mono); font-size: 13px; font-weight: 600; letter-spacing: 0.18em; color: var(--moss); text-transform: uppercase; }
+.s2 .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 14px; padding-top: 24px; border-top: 1px solid var(--line); }
+.s2 .stats .it .n { font-family: var(--f-cormo); font-style: italic; font-weight: 600; font-size: 56px; line-height: 1; color: var(--moss); }
+.s2 .stats .it .n .u { font-size: 22px; color: var(--moss-deep); margin-left: 4px; }
+.s2 .stats .it .l { margin-top: 8px; font-family: var(--f-mono); font-size: 11.5px; font-weight: 700; letter-spacing: 0.16em; color: var(--ink-mute); text-transform: uppercase; line-height: 1.4; }
+
+/* ─── 3 · NARRATIVE FILM ────────────────────────────────── */
+.s3 { background: #08080A; padding: 0; }
+.s3 .vbg { position: absolute; inset: 0; }
+.s3 .vbg .media { position: absolute; inset: 0; border-radius: 0; background: #000; }
+.s3 .vbg .media::before { background: #14181C; }
+.s3 .overlay {
+  position: absolute; inset: 0; z-index: 2;
+  background:
+    linear-gradient(180deg, rgba(8,8,10,0.55) 0%, transparent 25%, transparent 50%, rgba(8,8,10,0.92) 100%),
+    linear-gradient(90deg, rgba(8,8,10,0.5) 0%, transparent 35%);
+  pointer-events: none;
+}
+.s3 .text { position: absolute; bottom: 96px; left: 96px; right: 96px; z-index: 3; max-width: 1100px; color: #fff; }
+.s3 .text .eyebrow { color: var(--neon); }
+.s3 .text .eyebrow::before { background: var(--neon); box-shadow: 0 0 12px var(--neon); }
+.s3 .text h2 { font-family: var(--f-serif); font-weight: 700; font-size: 86px; line-height: 1.16; margin: 30px 0; color: #fff; letter-spacing: -0.015em; }
+.s3 .text .quote { font-family: var(--f-serif); font-size: 22px; font-weight: 400; line-height: 1.85; color: rgba(255,255,255,0.82); max-width: 720px; }
+.s3 .meta, .s3 .brand { color: rgba(255,255,255,0.6); }
+.s3 .meta .n { color: #fff; }
+.s3 .meta .seg { background: rgba(255,255,255,0.3); }
+.s3 .brand { color: rgba(255,255,255,0.75); }
+.s3 .corner-tag {
+  position: absolute; top: 48px; right: 80px; z-index: 8;
+  font-family: var(--f-cormo); font-style: italic; font-weight: 600;
+  font-size: 22px; color: rgba(255,255,255,0.78);
+}
+
+/* ─── 4 · MACRO TREND (银发经济) ─────────────────────────── */
+.s4 { padding: 110px 80px 70px; }
+.s4 .grid { display: grid; grid-template-columns: 0.95fr 1.05fr; gap: 54px; height: 100%; }
+.s4 .left { display: flex; flex-direction: column; }
+.s4 .left .num {
+  font-family: var(--f-cormo); font-style: italic; font-weight: 600;
+  font-size: 280px; line-height: 0.85; color: var(--moss); letter-spacing: -0.04em;
+  margin: 22px 0;
+}
+.s4 .left .num .u { font-size: 96px; color: var(--moss-deep); margin-left: 10px; }
+.s4 .left .lead { font-family: var(--f-serif); font-size: 20px; line-height: 1.85; font-weight: 500; color: var(--ink-soft); max-width: 540px; }
+.s4 .right { display: flex; flex-direction: column; gap: 22px; }
+.s4 .right .media { flex: 1; min-height: 0; border-radius: 22px; }
+.s4 .right .footnote { font-family: var(--f-mono); font-size: 12.5px; font-weight: 600; letter-spacing: 0.2em; color: var(--ink-mute); text-transform: uppercase; }
+.s4 .expand-card {
+  margin-top: 22px;
+  padding: 22px 26px;
+  border-radius: 18px;
+}
+.s4 .expand-card .ec-h { font-family: var(--f-serif); font-weight: 700; font-size: 24px; color: var(--ink); margin-bottom: 4px; }
+.s4 .expand-card .ec-p { font-family: var(--f-serif); font-size: 16px; line-height: 1.65; color: var(--ink-soft); font-weight: 500; max-width: 560px; padding-right: 130px; }
+
+/* ─── 5/6/7 · PAIN POINTS ───────────────────────────────── */
+.s-pain { padding: 110px 80px 70px; }
+.s-pain .grid { display: grid; grid-template-columns: 0.95fr 1.05fr; gap: 50px; height: 100%; }
+.s-pain .left { display: flex; flex-direction: column; }
+.s-pain .left .badge { display: inline-flex; align-items: center; gap: 12px; padding: 10px 18px; background: rgba(184,106,26,0.10); border: 1px solid rgba(184,106,26,0.3); color: var(--amber); border-radius: 100px; font-family: var(--f-mono); font-size: 13px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; }
+.s-pain .left h2 { margin: 26px 0 22px; }
+.s-pain .left .lead { max-width: 560px; }
+.s-pain .left .expand-card {
+  margin-top: auto;
+  padding: 26px 30px;
+}
+.s-pain .left .expand-card .ec-h { font-family: var(--f-serif); font-weight: 700; font-size: 26px; color: var(--ink); margin-bottom: 8px; padding-right: 130px; }
+.s-pain .left .expand-card .ec-p { font-family: var(--f-serif); font-size: 16px; line-height: 1.65; color: var(--ink-soft); font-weight: 500; }
+.s-pain .right .media { width: 100%; height: 100%; border-radius: 24px; box-shadow: 0 40px 80px -25px rgba(40,50,20,0.2); }
+.s-pain.dark { background: linear-gradient(135deg, #0E1108 0%, #1B2510 100%); color: #fff; }
+.s-pain.dark h2 { color: #fff; }
+.s-pain.dark h2 em { color: var(--neon); }
+.s-pain.dark .lead { color: rgba(255,255,255,0.72); }
+.s-pain.dark .badge { color: var(--neon); background: rgba(194,238,91,0.10); border-color: rgba(194,238,91,0.3); }
+.s-pain.dark .meta, .s-pain.dark .brand { color: rgba(255,255,255,0.55); }
+.s-pain.dark .meta .n { color: #fff; }
+.s-pain.dark .meta .seg { background: rgba(255,255,255,0.3); }
+.s-pain.dark .expand-card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); }
+.s-pain.dark .expand-card .ec-h { color: #fff; }
+.s-pain.dark .expand-card .ec-p { color: rgba(255,255,255,0.7); }
+
+/* ─── 8 · SKETCH ────────────────────────────────────────── */
+.s8 { padding: 110px 80px 80px; }
+.s8 .grid { display: grid; grid-template-columns: 1.55fr 1fr; gap: 50px; height: 100%; }
+.s8 .imgs { position: relative; }
+.s8 .imgs .main { position: absolute; inset: 0; border-radius: 24px; box-shadow: 0 50px 100px -30px rgba(0,0,0,0.22); }
+.s8 .imgs .polaroid {
+  position: absolute;
+  bottom: -10px; right: -10px;
+  width: 320px; height: 400px;
+  background: var(--paper);
+  padding: 16px 16px 56px;
+  border-radius: 6px;
+  transform: rotate(5deg);
+  box-shadow: 0 40px 100px -25px rgba(0,0,0,0.40),
+              0 14px 32px -10px rgba(0,0,0,0.22);
+  z-index: 3;
+  transition: transform 0.6s var(--ease-spring);
+}
+.s8 .imgs .polaroid:hover { transform: rotate(1deg) scale(1.03); }
+.s8 .imgs .polaroid .media { width: 100%; height: 100%; border-radius: 3px; background: transparent; }
+.s8 .imgs .polaroid .label { position: absolute; left: 16px; bottom: 16px; font-family: var(--f-cormo); font-style: italic; font-weight: 500; font-size: 17px; color: var(--ink-soft); }
+.s8 .notes { display: flex; flex-direction: column; gap: 30px; }
+.s8 .notes h2 { font-size: 64px; }
+.s8 .notes .note-list { display: flex; flex-direction: column; gap: 20px; margin-top: 10px; }
+.s8 .notes .note { padding: 18px 22px; border-left: 3px solid var(--moss); background: rgba(95,122,63,0.05); border-radius: 0 14px 14px 0; }
+.s8 .notes .note .step { font-family: var(--f-cormo); font-style: italic; font-weight: 600; font-size: 20px; color: var(--moss); }
+.s8 .notes .note .h { font-family: var(--f-serif); font-weight: 700; font-size: 21px; color: var(--ink); margin: 4px 0 6px; }
+.s8 .notes .note .d { font-family: var(--f-serif); font-size: 15.5px; line-height: 1.7; color: var(--ink-soft); font-weight: 500; }
+
+/* ─── 9 · ERGONOMICS ───────────────────────────────────── */
+.s9 { padding: 110px 80px 70px; }
+.s9 .grid { display: grid; grid-template-rows: auto 1fr auto; gap: 28px; height: 100%; }
+.s9 .head { display: flex; justify-content: space-between; align-items: flex-end; gap: 60px; }
+.s9 .head h2 { max-width: 1100px; font-size: 56px; }
+.s9 .head .right-tag { font-family: var(--f-mono); font-size: 13px; font-weight: 600; letter-spacing: 0.2em; color: var(--ink-mute); text-transform: uppercase; }
+.s9 .figs { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; min-height: 0; }
+.s9 .figs .media { width: 100%; height: 100%; border-radius: 20px; }
+.s9 .specs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; padding: 22px 26px; }
+.s9 .specs .it { padding: 4px 0; }
+.s9 .specs .it .k { font-family: var(--f-mono); font-size: 11.5px; font-weight: 700; letter-spacing: 0.18em; color: var(--ink-mute); text-transform: uppercase; }
+.s9 .specs .it .v { font-family: var(--f-cormo); font-style: italic; font-weight: 600; font-size: 32px; color: var(--moss); margin-top: 6px; line-height: 1; }
+.s9 .specs .it .v .u { font-family: var(--f-mono); font-style: normal; font-size: 13px; font-weight: 600; color: var(--ink-mute); margin-left: 4px; }
+.s9 .specs .it .d { font-family: var(--f-sans); font-size: 14px; font-weight: 500; color: var(--ink-soft); margin-top: 4px; line-height: 1.5; }
+
+/* ─── 10 · 3D MECHANISM VIDEO ─────────────────────────── */
+.s10 { padding: 110px 80px 70px; }
+.s10 .grid { display: grid; grid-template-columns: 0.42fr 1fr; gap: 50px; height: 100%; }
+.s10 .info { display: flex; flex-direction: column; }
+.s10 .info h2 { margin: 22px 0 24px; font-size: 56px; }
+.s10 .info .lead { margin-bottom: 24px; max-width: 480px; }
+.s10 .info .specs { display: grid; gap: 14px; margin-top: auto; }
+.s10 .info .specs .row { padding: 14px 0; border-top: 1px solid var(--line); display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: baseline; }
+.s10 .info .specs .row .k { font-family: var(--f-sans); font-size: 15px; font-weight: 600; color: var(--ink-soft); }
+.s10 .info .specs .row .v { font-family: var(--f-mono); font-weight: 700; font-size: 18px; color: var(--moss); }
+.s10 .video-stage {
+  position: relative;
+  border-radius: 32px; overflow: hidden;
+  background: #08080A;
+  box-shadow: 0 70px 130px -30px rgba(40,50,20,0.35),
+              0 30px 60px -20px rgba(0,0,0,0.3),
+              0 0 0 1px rgba(255,255,255,0.08) inset;
+}
+.s10 .video-stage .media { width: 100%; height: 100%; border-radius: 0; background: #000; }
+.s10 .video-stage .media::before { background: #14181C; }
+.s10 .vid-tag {
+  position: absolute; bottom: 24px; left: 24px; z-index: 6;
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 18px;
+  background: rgba(15,18,8,0.85);
+  backdrop-filter: blur(14px);
+  border-radius: 100px;
+  font-family: var(--f-mono); font-size: 12px; font-weight: 700;
+  letter-spacing: 0.2em; color: #fff;
+}
+.s10 .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--neon); animation: pulseDot 1.4s ease-in-out infinite; }
+@keyframes pulseDot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.7); } }
+
+/* ─── 11 · EXPLODED VIEW ────────────────────────────────── */
+.s11 { padding: 0; background: linear-gradient(180deg, var(--paper) 0%, #EFE9DC 100%); }
+.s11 .img-bleed { position: absolute; inset: 0; border-radius: 0; background: transparent; }
+.s11 .img-bleed::before { background: linear-gradient(110deg, #ECE8DC 0%, #F6F2E6 50%, #ECE8DC 100%); background-size: 200% 100%; animation: shimmer 1.8s infinite; }
+.s11 .img-bleed > img { object-fit: contain; padding: 70px; }
+.s11 .top-card {
+  position: absolute; top: 70px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  padding: 24px 50px;
+  text-align: center;
+  background: rgba(15,18,8,0.92);
+  backdrop-filter: blur(24px) saturate(140%);
+  color: #fff;
+  border-radius: 22px;
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 30px 60px rgba(0,0,0,0.30),
+              0 0 0 1px rgba(255,255,255,0.06) inset;
+  max-width: 1100px;
+}
+.s11 .top-card .eyebrow { color: var(--neon); justify-content: center; }
+.s11 .top-card .eyebrow::before { background: var(--neon); box-shadow: 0 0 12px var(--neon); }
+.s11 .top-card h2 { font-family: var(--f-serif); font-weight: 700; font-size: 40px; line-height: 1.2; margin-top: 12px; color: #fff; }
+.s11 .top-card h2 em { color: var(--neon); font-style: italic; }
+.s11 .top-card .ec-hint {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 14px; margin-top: 14px;
+  background: var(--neon); color: var(--moss-deep);
+  font-family: var(--f-mono); font-size: 12px; font-weight: 700;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  border-radius: 100px;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(194,238,91,0.5);
+  transition: transform 0.3s var(--ease-out);
+}
+.s11 .top-card .ec-hint:hover { transform: translateY(-2px); }
+.s11 .top-card .ec-hint::before { content: '+'; font-size: 16px; font-weight: 900; width: 16px; height: 16px; display: grid; place-items: center; background: rgba(20,30,15,0.2); border-radius: 50%; animation: pulse 1.6s infinite; }
+
+.s11 .layer-tags {
+  position: absolute; bottom: 60px; left: 80px; right: 80px;
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px;
+  z-index: 5;
+}
+.s11 .layer-tags .tag {
+  padding: 18px 22px;
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.7);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px -10px rgba(0,0,0,0.12);
+}
+.s11 .layer-tags .tag .n { font-family: var(--f-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.22em; color: var(--moss); }
+.s11 .layer-tags .tag .h { font-family: var(--f-serif); font-weight: 700; font-size: 18px; margin: 8px 0 4px; color: var(--ink); }
+.s11 .layer-tags .tag .d { font-family: var(--f-sans); font-size: 13px; font-weight: 500; color: var(--ink-soft); line-height: 1.55; }
+
+/* ─── 12 · PVDF RADAR (dark) ───────────────────────────── */
+.s12 { background: radial-gradient(ellipse at 75% 50%, #142010 0%, #08100A 70%); color: #fff; padding: 110px 80px 70px; }
+.s12 .grid { display: grid; grid-template-columns: 0.42fr 1fr; gap: 50px; height: 100%; }
+.s12 .info { display: flex; flex-direction: column; justify-content: center; }
+.s12 .info .eyebrow { color: var(--neon); text-shadow: 0 0 22px rgba(194,238,91,0.5); }
+.s12 .info .eyebrow::before { background: var(--neon); box-shadow: 0 0 14px var(--neon); }
+.s12 .info h2 { color: #fff; margin: 24px 0 26px; font-size: 60px; }
+.s12 .info h2 em { color: var(--neon); font-style: italic; text-shadow: 0 0 26px rgba(194,238,91,0.55); }
+.s12 .info .lead { color: rgba(255,255,255,0.75); margin-bottom: 30px; }
+.s12 .info .data-panel {
+  background: rgba(194,238,91,0.04);
+  border: 1px solid rgba(194,238,91,0.25);
+  border-radius: 18px;
+  padding: 22px 26px;
+  box-shadow: 0 0 60px rgba(194,238,91,0.10), inset 0 0 30px rgba(194,238,91,0.03);
+}
+.s12 .info .data-panel .row { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 0; border-bottom: 1px solid rgba(194,238,91,0.16); }
+.s12 .info .data-panel .row:last-child { border-bottom: none; }
+.s12 .info .data-panel .k { font-family: var(--f-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.18em; color: rgba(255,255,255,0.55); text-transform: uppercase; }
+.s12 .info .data-panel .v { font-family: var(--f-mono); font-weight: 700; font-size: 19px; color: var(--neon); text-shadow: 0 0 14px rgba(194,238,91,0.5); }
+.s12 .vid-side {
+  position: relative;
+  border-radius: 32px; overflow: hidden;
+  background: #000;
+  border: 1px solid rgba(194,238,91,0.2);
+  box-shadow: 0 0 100px rgba(194,238,91,0.18),
+              0 50px 90px rgba(0,0,0,0.5);
+}
+.s12 .vid-side .media { width: 100%; height: 100%; border-radius: 0; background: #000; }
+.s12 .vid-side .media::before { background: #0A0E08; }
+.s12 .scan-line {
+  position: absolute; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--neon), transparent);
+  box-shadow: 0 0 16px var(--neon);
+  opacity: 0.6;
+  animation: scanLine 3.5s ease-in-out infinite;
+  z-index: 6; pointer-events: none;
+}
+@keyframes scanLine { 0%, 100% { top: 8%; } 50% { top: 92%; } }
+.s12 .meta, .s12 .brand { color: rgba(255,255,255,0.55); }
+.s12 .meta .n { color: #fff; }
+.s12 .meta .seg { background: rgba(255,255,255,0.3); }
+
+/* ─── 13 · WOOD TOUCH MACRO ────────────────────────────── */
+.s13 { padding: 110px 80px 70px; }
+.s13 .grid { display: grid; grid-template-columns: 0.42fr 1fr; gap: 50px; height: 100%; }
+.s13 .info { display: flex; flex-direction: column; justify-content: center; }
+.s13 .info h2 { font-size: 60px; margin: 22px 0 24px; }
+.s13 .info .lead { max-width: 480px; margin-bottom: 28px; }
+.s13 .info .specs { display: grid; gap: 12px; padding-top: 18px; border-top: 1px solid var(--line); }
+.s13 .info .specs .row { padding: 12px 0; border-bottom: 1px solid var(--line-soft); }
+.s13 .info .specs .row .k { font-family: var(--f-mono); font-size: 11.5px; font-weight: 700; letter-spacing: 0.2em; color: var(--moss); text-transform: uppercase; margin-bottom: 4px; }
+.s13 .info .specs .row .v { font-family: var(--f-sans); font-size: 16px; font-weight: 600; color: var(--ink); line-height: 1.5; }
+.s13 .gallery { position: relative; height: 100%; }
+.s13 .circle {
+  position: absolute;
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: 0 50px 100px -25px rgba(0,0,0,0.30);
+}
+.s13 .circle.a { width: 46%; aspect-ratio: 1; top: 5%; left: 0; transform: rotate(-4deg); z-index: 2; }
+.s13 .circle.b { width: 50%; aspect-ratio: 1; bottom: 5%; right: 0; z-index: 1; }
+.s13 .ring { position: absolute; border-radius: 50%; border: 1.5px dashed var(--moss-soft); pointer-events: none; }
+.s13 .ring.r1 { width: 48%; aspect-ratio: 1; top: 3%; left: -2%; opacity: 0.55; }
+.s13 .ring.r2 { width: 52%; aspect-ratio: 1; bottom: 3%; right: -2%; opacity: 0.45; border-color: var(--amber); }
+.s13 .micro-tag {
+  position: absolute; z-index: 6;
+  padding: 8px 14px;
+  background: rgba(15,18,8,0.88);
+  backdrop-filter: blur(14px);
+  color: #fff;
+  font-family: var(--f-mono); font-size: 11.5px; font-weight: 700;
+  letter-spacing: 0.18em;
+  border-radius: 100px;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.s13 .micro-tag .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); animation: pulseDot 1.4s infinite; box-shadow: 0 0 10px var(--amber); }
+.s13 .micro-tag.t1 { top: 50%; left: 36%; }
+.s13 .micro-tag.t2 { bottom: 50%; right: 32%; }
+
+/* ─── 14 / 15 · UI (Elder / Family) ────────────────────── */
+.s-ui { padding: 110px 80px 70px; }
+.s-ui .grid { display: grid; grid-template-columns: 0.4fr 1fr; gap: 50px; height: 100%; }
+.s-ui .info { display: flex; flex-direction: column; justify-content: center; }
+.s-ui .info h2 { font-size: 56px; margin: 22px 0 24px; }
+.s-ui .info .lead { margin-bottom: 26px; max-width: 460px; }
+.s-ui .info .princ { display: flex; flex-direction: column; gap: 12px; }
+.s-ui .info .princ .p { padding: 14px 0; border-top: 1px solid var(--line); }
+.s-ui .info .princ .p .k { font-family: var(--f-mono); font-size: 11.5px; font-weight: 700; letter-spacing: 0.22em; color: var(--moss); text-transform: uppercase; margin-bottom: 6px; }
+.s-ui .info .princ .p .v { font-family: var(--f-sans); font-size: 16px; font-weight: 600; color: var(--ink); }
+.s-ui .stage-bg {
+  position: relative;
+  background: linear-gradient(135deg, var(--moss-tint) 0%, #B5C49A 50%, #8FA665 100%);
+  border-radius: 32px;
+  overflow: hidden;
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  padding: 50px;
+  align-items: center;
+}
+.s-ui .stage-bg::before {
+  content: ''; position: absolute; inset: -25%;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.45), transparent 45%),
+              radial-gradient(circle at 70% 70%, rgba(95,122,63,0.35), transparent 50%);
+  pointer-events: none;
+}
+.s-ui .phone {
+  position: relative;
+  background: #1A1A1A;
+  border-radius: 36px;
+  padding: 12px;
+  box-shadow: 0 50px 90px -20px rgba(40,50,20,0.45),
+              0 25px 55px -15px rgba(0,0,0,0.35),
+              0 0 0 1px rgba(255,255,255,0.08) inset;
+  width: 100%;
+  aspect-ratio: 9 / 18;
+  transition: transform 0.6s var(--ease-spring);
+}
+.s-ui .phone::after {
+  content: ''; position: absolute;
+  top: 12px; left: 50%; transform: translateX(-50%);
+  width: 80px; height: 6px;
+  background: rgba(255,255,255,0.18);
+  border-radius: 3px; z-index: 3;
+}
+.s-ui .phone .screen { width: 100%; height: 100%; border-radius: 26px; overflow: hidden; background: #fff; }
+.s-ui .phone .screen .media { width: 100%; height: 100%; border-radius: 0; background: transparent; }
+.s-ui .phone.p1 { transform: rotate(-3deg); }
+.s-ui .phone.p2 { transform: rotate(3deg); margin-top: 30px; }
+
+/* ─── 16 · PROTOTYPE IFRAME ─────────────────────────────── */
+.s16 { padding: 110px 80px 80px; background: linear-gradient(180deg, var(--paper) 0%, #E8E2D2 100%); }
+.s16 .grid { display: grid; grid-template-columns: 0.42fr 1fr; gap: 56px; height: 100%; align-items: center; }
+.s16 .info { display: flex; flex-direction: column; }
+.s16 .info h2 { margin: 22px 0 24px; font-size: 64px; }
+.s16 .info .lead { margin-bottom: 26px; max-width: 460px; }
+.s16 .info .feat-grid { display: grid; gap: 14px; margin-top: auto; }
+.s16 .info .feat { padding: 14px 0; border-top: 1px solid var(--line); }
+.s16 .info .feat .k { font-family: var(--f-mono); font-size: 11.5px; font-weight: 700; letter-spacing: 0.22em; color: var(--moss); text-transform: uppercase; margin-bottom: 6px; }
+.s16 .info .feat .v { font-family: var(--f-sans); font-size: 16px; font-weight: 600; color: var(--ink); }
+.s16 .device-frame {
+  position: relative;
+  width: 100%; height: 92%;
+  margin: auto;
+  background: #1A1A1A;
+  border-radius: 36px;
+  padding: 22px;
+  box-shadow: 0 80px 140px -30px rgba(40,50,20,0.35),
+              0 40px 80px -20px rgba(0,0,0,0.30),
+              0 0 0 1px rgba(255,255,255,0.08) inset;
+}
+.s16 .device-frame::before {
+  content: ''; position: absolute;
+  top: 12px; left: 50%; transform: translateX(-50%);
+  width: 100px; height: 8px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 4px; z-index: 3;
+}
+.s16 .device-frame .screen {
+  width: 100%; height: 100%;
+  border-radius: 22px;
+  overflow: hidden;
+  background: #fff;
+  position: relative;
+}
+.s16 .device-frame .screen .media { width: 100%; height: 100%; border-radius: 0; background: #fff; }
+.s16 .live-tag {
+  position: absolute; top: 28px; left: 28px; z-index: 10;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 14px;
+  background: rgba(15,18,8,0.85);
+  backdrop-filter: blur(14px);
+  color: #fff;
+  font-family: var(--f-mono); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.18em;
+  border-radius: 100px;
+}
+.s16 .live-tag .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--neon); animation: pulseDot 1.4s infinite; }
+
+/* ─── 17 / 18 · DAY / NIGHT SCENE ──────────────────────── */
+.s17 { padding: 110px 80px 70px; }
+.s17 .grid { display: grid; grid-template-rows: auto 1fr; gap: 28px; height: 100%; }
+.s17 .head { display: flex; justify-content: space-between; align-items: flex-end; gap: 60px; }
+.s17 .head h2 { font-size: 56px; max-width: 800px; }
+.s17 .head .right-text { max-width: 480px; }
+.s17 .head .right-text p { font-family: var(--f-serif); font-size: 17px; line-height: 1.75; color: var(--ink-soft); font-weight: 500; }
+.s17 .photos { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 22px; min-height: 0; }
+.s17 .photo { position: relative; border-radius: 24px; overflow: hidden; box-shadow: 0 40px 80px -25px rgba(0,0,0,0.22); }
+.s17 .photo .media { width: 100%; height: 100%; border-radius: 0; background: transparent; }
+.s17 .photo-label {
+  position: absolute; top: 22px; left: 22px; z-index: 5;
+  padding: 8px 16px;
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(16px);
+  color: var(--moss-deep);
+  font-family: var(--f-mono); font-size: 11.5px; font-weight: 700;
+  letter-spacing: 0.2em;
+  border-radius: 100px;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.s17 .photo-label .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--moss); }
+
+.s18 { padding: 110px 80px 70px; background: linear-gradient(180deg, #0A0F08 0%, #1A2510 100%); color: #fff; }
+.s18 .grid { display: grid; grid-template-columns: 0.42fr 1fr; gap: 50px; height: 100%; }
+.s18 .info { display: flex; flex-direction: column; justify-content: center; }
+.s18 .info h2 { color: #fff; margin: 22px 0 26px; font-size: 60px; }
+.s18 .info h2 em { color: var(--neon); font-style: italic; }
+.s18 .info .lead { color: rgba(255,255,255,0.72); margin-bottom: 28px; }
+.s18 .info .timeline { display: flex; flex-direction: column; gap: 14px; padding-left: 22px; border-left: 1.5px solid rgba(194,238,91,0.3); }
+.s18 .info .timeline .it { padding-left: 16px; position: relative; }
+.s18 .info .timeline .it::before { content: ''; position: absolute; left: -29px; top: 8px; width: 12px; height: 12px; border-radius: 50%; background: var(--neon); box-shadow: 0 0 12px var(--neon); }
+.s18 .info .timeline .it.warn::before { background: var(--amber); box-shadow: 0 0 12px var(--amber); }
+.s18 .info .timeline .it .t { font-family: var(--f-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.18em; color: var(--neon); }
+.s18 .info .timeline .it .d { font-family: var(--f-sans); font-size: 15.5px; font-weight: 500; color: rgba(255,255,255,0.85); line-height: 1.55; margin-top: 2px; }
+.s18 .scene-img { position: relative; border-radius: 28px; overflow: hidden; box-shadow: 0 60px 120px -25px rgba(0,0,0,0.5); }
+.s18 .scene-img .media { width: 100%; height: 100%; border-radius: 0; background: #08080A; }
+.s18 .scene-label {
+  position: absolute; top: 28px; right: 28px; z-index: 5;
+  padding: 10px 18px;
+  background: rgba(15,18,8,0.78);
+  backdrop-filter: blur(16px);
+  color: #fff;
+  font-family: var(--f-mono); font-size: 12px; font-weight: 700;
+  letter-spacing: 0.2em;
+  border-radius: 100px;
+  display: inline-flex; align-items: center; gap: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.s18 .scene-label .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); animation: pulseDot 1.4s infinite; box-shadow: 0 0 10px var(--amber); }
+.s18 .meta, .s18 .brand { color: rgba(255,255,255,0.55); }
+.s18 .meta .n { color: #fff; }
+.s18 .meta .seg { background: rgba(255,255,255,0.3); }
+
+/* ─── 19 · HOME VIDEO ──────────────────────────────────── */
+.s19 { padding: 110px 80px 80px; background: linear-gradient(180deg, var(--paper) 0%, #E8E2D2 100%); }
+.s19 .grid { display: grid; grid-template-columns: 0.42fr 1fr; gap: 60px; height: 100%; align-items: center; }
+.s19 .info { display: flex; flex-direction: column; }
+.s19 .info h2 { font-size: 68px; margin: 24px 0 28px; }
+.s19 .info .lead { margin-bottom: 24px; }
+.s19 .info .quote {
+  font-family: var(--f-cormo); font-style: italic; font-weight: 600;
+  font-size: 32px; line-height: 1.5; color: var(--moss-deep);
+  padding-left: 26px; border-left: 3px solid var(--moss); margin-top: 32px;
+}
+.s19 .vid-frame {
+  width: 100%; height: 92%;
+  margin: auto;
+  border-radius: 36px;
+  overflow: hidden;
+  position: relative;
+  background: #08080A;
+  box-shadow: 0 70px 140px -30px rgba(40,50,20,0.35),
+              0 30px 60px -20px rgba(0,0,0,0.3),
+              0 0 0 1px rgba(255,255,255,0.08) inset;
+}
+.s19 .vid-frame .media { width: 100%; height: 100%; border-radius: 0; background: #000; }
+
+/* ─── 20 · BUSINESS CANVAS ─────────────────────────────── */
+.s20 { padding: 110px 80px 80px; }
+.s20 .head { margin-bottom: 28px; display: flex; justify-content: space-between; align-items: flex-end; gap: 60px; }
+.s20 .head h2 { font-size: 56px; max-width: 880px; }
+.s20 .head .right-tag { font-family: var(--f-mono); font-size: 13px; font-weight: 600; letter-spacing: 0.2em; color: var(--ink-mute); text-transform: uppercase; }
+.s20 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; height: calc(100% - 220px); }
+.s20 .col { position: relative; border-radius: 28px; overflow: hidden; box-shadow: 0 30px 70px -25px rgba(40,50,20,0.18); }
+.s20 .col .media { width: 100%; height: 100%; border-radius: 0; background: var(--bg-2); }
+.s20 .col-label {
+  position: absolute; top: 24px; left: 24px; z-index: 5;
+  padding: 10px 18px;
+  font-family: var(--f-mono); font-size: 11.5px; font-weight: 700;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  border-radius: 100px;
+  background: rgba(15,18,8,0.92);
+  backdrop-filter: blur(14px); color: #fff;
+}
+.s20 .col.right .col-label { background: var(--moss); }
+.s20 .footer-bar {
+  position: absolute; bottom: 36px; left: 80px; right: 80px; z-index: 5;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 24px 36px;
+  background: linear-gradient(135deg, #0F1208 0%, #1A2510 100%);
+  color: #fff;
+  border-radius: 20px;
+  box-shadow: 0 32px 70px -22px rgba(0,0,0,0.45),
+              0 0 0 1px rgba(255,255,255,0.08) inset;
+}
+.s20 .footer-bar .end-h {
+  font-family: var(--f-cormo); font-style: italic; font-weight: 600;
+  font-size: 36px; color: var(--moss-soft);
+}
+.s20 .footer-bar .sign {
+  font-family: var(--f-mono); font-size: 12px; font-weight: 600;
+  letter-spacing: 0.22em; color: rgba(255,255,255,0.65);
+  display: flex; gap: 30px; text-transform: uppercase;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+</style>
+</head>
+<body class="">
+
+<!-- ═════════════ TOOLBAR ═════════════ -->
+<div class="toolbar">
+  <button class="tool-btn" id="editBtn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"></path></svg>
+    <span id="editLbl">开启编辑</span>
+  </button>
+  <button class="tool-btn" id="moveBtn" title="开启后可直接拖动任意容器移动位置（无需按键）" style="display: none;">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="5 9 2 12 5 15"></polyline><polyline points="9 5 12 2 15 5"></polyline><polyline points="15 19 12 22 9 19"></polyline><polyline points="19 9 22 12 19 15"></polyline><line x1="2" y1="12" x2="22" y2="12"></line><line x1="12" y1="2" x2="12" y2="22"></line></svg>
+    <span id="moveLbl">移动模式</span>
+  </button>
+  <button class="tool-btn primary" id="exportBtn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+    <span>导出</span>
+  </button>
+  <button class="tool-btn" id="fsBtn">
+    <svg id="fsIcn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="4 14 4 20 10 20"></polyline><polyline points="20 10 20 4 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+    <span id="fsLbl">全屏</span>
+  </button>
+</div>
+
+<!-- ═════════════ STAGE ═════════════ -->
+<div class="viewport">
+  <div class="stage" id="stage">
+
+    <!-- ═══════════ 1 · COVER ═══════════ -->
+    <section class="slide s1 active" data-i="1">
+      <div class="meta reveal d1"><span class="n" data-edit="" spellcheck="false">01</span><span class="seg"></span><span data-edit="" spellcheck="false">封面 · 项目主视觉</span></div>
+      <div class="brand reveal d1" data-edit="" spellcheck="false">坐享其美</div>
+
+      <div class="grid">
+        <div class="left">
+          <div>
+            <div class="eyebrow reveal d2"><span data-edit="" spellcheck="false">2026 工业设计课程设计汇报</span></div>
+            <h1 class="h-hero reveal d3"><span data-edit="" spellcheck="false">坐享</span><em data-edit="" spellcheck="false">其美</em></h1>
+            <div class="sub-en reveal d4" data-edit="" spellcheck="false">一把为长者而生的智能适老化座椅</div>
+            <p class="sub-zh reveal d5" data-edit="" spellcheck="false">以高等级北美黑胡桃实木为骨架，以青苔绿羊毛混纺织物为肌理，以隐形于木纹之下的柔性压电传感器与静音线性推杆为心脏。让科技完全收敛于结构与材料之内，让陪伴成为家具与生俱来的属性——这便是「坐享其美」被设计出来的根本理由。</p>
+          </div>
+          <div class="meta-row reveal d6 block-draggable">
+            <div><div class="k" data-edit="" spellcheck="false">汇报人</div><div class="v" data-edit="" spellcheck="false">昌克强</div></div>
+            <div><div class="k" data-edit="" spellcheck="false">指导</div><div class="v" data-edit="" spellcheck="false">工业设计学院</div></div>
+            <div><div class="k" data-edit="" spellcheck="false">日期</div><div class="v" data-edit="" spellcheck="false">2026 / 06</div></div>
+            <div><div class="k" data-edit="" spellcheck="false">类型</div><div class="v" data-edit="" spellcheck="false">课程设计</div></div>
+          </div>
+        </div>
+        <div class="right spring d3">
+          <div class="stamp block-draggable" data-edit="" spellcheck="false">坐享<br>其美</div>
+          <div class="media">
+            <img data-src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473065170-rn30aq-Gemini_Generated_Image_.png" alt="坐享其美 主视觉" class="" style="--px: 55.24225327813609%; --py: 46.203918041506626%;">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ 2 · FIELD RESEARCH ═══════════ -->
+    <section class="slide s2" data-i="2">
+      <div class="meta reveal d1"><span class="n" data-edit="" spellcheck="false">02</span><span class="seg"></span><span data-edit="" spellcheck="false">适老田野调查 · 第一手共情洞察</span></div>
+      <div class="brand reveal d1" data-edit="" spellcheck="false">坐享其美</div>
+
+      <div class="grid">
+        <div class="photos">
+          <div class="media photo a spring d2"><img data-src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473033044-95yul9-实地调查_1.png" alt="实地调查 · 影像 A" class="" style="--px: 32.34718161236581%; --py: 26.40735515384185%;"></div>
+          <div class="media photo b spring d4"><img data-src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473042033-jllc3s-实地调查_2.png" alt="实地调查 · 影像 B" class="" style="--px: 29.712214967954772%; --py: 87.89090487967026%;"></div>
+        </div>
+
+        <div class="info block-draggable" style="transform: translate(31.3282px, 46.1679px);">
+          <div class="eyebrow reveal d2"><span data-edit="" spellcheck="false">第一手洞察 · 二零二五年九月 至 二零二六年二月</span></div>
+          <h2 class="h-page reveal d3"><span data-edit="" spellcheck="false">在他们的</span> <em data-edit="" spellcheck="false">沉默</em> <span data-edit="" spellcheck="false">里听见</span> <em data-edit="" spellcheck="false">需要</em><span data-edit="" spellcheck="false">。</span></h2>
+          <p class="body-lg reveal d4" data-edit="" spellcheck="false">我们用六个月时间走访了北京、上海、成都的 12 家临终关怀医院与社区养老机构，深度访谈 87 位 65 岁以上独居或半自理长者，进行 240 小时居家陪伴式参与观察，并对 36 位家属与一线照护者进行了结构化访谈。</p>
+          <p class="body-md reveal d5" data-edit="" spellcheck="false">调研中我们一再听见同一种沉默：长者不是"老"，是怕"麻烦人"。「自己能起身就是体面」——这句话被不同的受访者用不同的方言重复了无数次。它告诉我们：真正需要被设计的，不是更强的医疗辅具，而是一把能让长者保持自尊的家具。</p>
+          <div class="quote-card reveal d6 block-draggable">
+            <div class="q" data-edit="" spellcheck="false">"不是我不想说，只是怕麻烦你们；如果有把椅子能让我自己起身，就已经是最大的体面了。"</div>
+            <div class="who" data-edit="" spellcheck="false">—— 一位 78 岁受访者 · 北京海淀</div>
+          </div>
+          <div class="stats reveal d7 block-draggable">
+            <div class="it"><div class="n"><span data-edit="" spellcheck="false">240</span><span class="u" data-edit="" spellcheck="false">小时</span></div><div class="l" data-edit="" spellcheck="false">居家陪伴式 参与观察</div></div>
+            <div class="it"><div class="n"><span data-edit="" spellcheck="false">87</span><span class="u" data-edit="" spellcheck="false">位</span></div><div class="l" data-edit="" spellcheck="false">65+ 长者 深度访谈</div></div>
+            <div class="it"><div class="n"><span data-edit="" spellcheck="false">36</span><span class="u" data-edit="" spellcheck="false">位</span></div><div class="l" data-edit="" spellcheck="false">家属 / 照护者 结构化访谈</div></div>
+            <div class="it"><div class="n"><span data-edit="" spellcheck="false">12</span><span class="u" data-edit="" spellcheck="false">家</span></div><div class="l" data-edit="" spellcheck="false">临终关怀 / 养老机构 走访</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ 3 · MARKET / 银发经济（原 P4 上移）═══════════ -->
+    <section class="slide s4" data-i="3">
+      <div class="meta reveal d1"><span class="n" data-edit="" spellcheck="false">03</span><span class="seg"></span><span data-edit="" spellcheck="false">银发经济 · 宏观市场趋势</span></div>
+      <div class="brand reveal d1" data-edit="" spellcheck="false">坐享其美</div>
+
+      <div class="grid">
+        <div class="left">
+          <div class="eyebrow reveal d2"><span data-edit="" spellcheck="false">银发经济 · 二零二六年度</span></div>
+          <div class="num reveal d3 block-draggable"><span data-edit="" spellcheck="false">90</span><span class="u" data-edit="" spellcheck="false">%</span></div>
+          <p class="lead reveal d4" data-edit="" spellcheck="false">中国 60 岁以上人口将在十年内突破 3.45 亿，占总人口 25.3%。其中 90% 的长者倾向居家养老——这意味着家居环境而非养老机构，才是适老化产品的真实战场。客厅里的一把椅子，正在成为养老的第一现场。</p>
+          <div class="expand-card glass reveal d5 block-draggable" data-modal="m-market">
+            <div class="expand-hint">点击查看详情</div>
+            <div class="ec-h" data-edit="" spellcheck="false">银发经济万亿级市场剖析</div>
+            <p class="ec-p" data-edit="" spellcheck="false">2030 年中国银发经济规模将突破 6.8 万亿元，居家陪伴体（companion chair）作为新兴品类正在重塑客厅生态。点击展开阅读完整市场剖析与产品机会窗口。</p>
+          </div>
+        </div>
+        <div class="right">
+          <div class="media spring d3"><img data-src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473100275-fzd1nm-Gemini_Generated_Image_hgpddmhgpddmhgpd.png" alt="银发经济宏观数据" class=""></div>
+          <div class="footnote reveal d6 block-draggable" data-edit="" spellcheck="false">数据来源 · 中国发展研究基金会 二零二五 ／ 国家统计局 ／ 中国老龄科学研究中心</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ 4 · NARRATIVE FILM（原 P3 下移到第 4 页）═══════════ -->
+    <section class="slide s3" data-i="4" data-fullvid="">
+      <div class="vbg">
+        <div class="media"><video data-src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/videos/2026-06-03/1780473441676-8ylmxn-无水印.mp4" preload="auto" autoplay="" loop="" muted="" playsinline="" class=""></video></div>
+      </div>
+      <div class="overlay"></div>
+      <div class="meta reveal d1"><span class="n" data-edit="" spellcheck="false">04</span><span class="seg"></span><span data-edit="" spellcheck="false">概念叙事片 · 沉浸式情感共鸣</span></div>
+      <div class="corner-tag reveal d1 block-draggable" data-edit="" spellcheck="false">概念短片 · 时长六十秒</div>
+
+      <div class="text block-draggable">
+        <div class="eyebrow reveal d2"><span data-edit="" spellcheck="false">沉浸叙事 · 一个长者的一天</span></div>
+        <h2 class="reveal d3"><span data-edit="" spellcheck="false">当世界开始变慢，</span><br><span data-edit="" spellcheck="false">家具仍要懂得</span> <span data-edit="" spellcheck="false">起身相迎。</span></h2>
+        <p class="quote reveal d4" data-edit="" spellcheck="false">这是一段以「光、坐姿、呼吸」为主题的概念影像。我们用最朴素的居家瞬间——一杯水放下的弧线、一束阳光落在木椅上的角度、一次没人在场的久坐——叙述一把椅子如何静默陪伴一位长者的一天。这便是「坐享其美」被设计出来的根本理由：让陪伴成为一种家具的固有性能。</p>
+      </div>
+    </section>
+
+    <!-- ═══════════ 5 · PAIN 1 · 起坐陷阱 ═══════════ -->
+    <section class="slide s-pain s5" data-i="5">
+      <div class="meta reveal d1"><span class="n" data-edit="" spellcheck="false">05</span><span class="seg"></span><span data-edit="" spellcheck="false">痛点 一 · 起坐陷阱</span></div>
+      <div class="brand reveal d1" data-edit="" spellcheck="false">坐享其美</div>
+
+      <div class="grid">
+        <div class="left">
+          <div class="badge reveal d2 block-draggable"><span data-edit="" spellcheck="false">痛点 01 · 起坐陷阱</span></div>
+          <h2 class="h-page reveal d3"><span data-edit="" spellcheck="false">每一次起身，</span><br><span data-edit="" spellcheck="false">都像一场</span> <em data-edit="" spellcheck="false">身体的博弈</em><span data-edit="" spellcheck="false">。</span></h2>
+          <p class="lead body-lg reveal d4" data-edit="" spellcheck="false">骨骼肌随年龄持续流失，长者从深陷型软沙发起身需克服自重 1.6 倍的反作用力。本应自然的动作，被反复借力、扶手助力、关节代偿替代——每一次站起，都是身体与时间的悄然对赌。</p>
+          <div class="expand-card glass reveal d5 block-draggable" data-modal="m-pain1">
+            <div class="expand-hint">点击展开 医学数据</div>
+            <div class="ec-h" data-edit="" spellcheck="false">起坐陷阱 · 严谨医学与人机数据</div>
+            <p class="ec-p" data-edit="" spellcheck="false">展开阅读骨骼肌流失率、腰椎椎间盘受力、起身体位性低血压发生率、肩袖代偿损伤等完整人机工程学与老年医学数据。</p>
+          </div>
+        </div>
+        <div class="right">
+          <div class="media spring d3"><img data-src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473069186-5uz7v1-Gemini_Generated_Image_2yxh8y2yxh8y2yxh.png" alt="起坐陷阱" class=""></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ 6 · PAIN 2 · 数字鸿沟 ═══════════ -->
+    <section class="slide s-pain s6" data-i="6">
+      <div class="meta reveal d1"><span class="n" data-edit="" spellcheck="false">06</span><span class="seg"></span><span data-edit="" spellcheck="false">痛点 二 · 数字鸿沟</span></div>
+      <div class="brand reveal d1" data-edit="" spellcheck="false">坐享其美</div>
+
+      <div class="grid">
+        <div class="left">
+          <div class="badge reveal d2 block-draggable"><span data-edit="" spellcheck="false">痛点 02 · 数字鸿沟</span></div>
+          <h2 class="h-page reveal d3"><span data-edit="" spellcheck="false">十二个按键，</span><br><span data-edit="" spellcheck="false">就是一道</span> <em data-edit="" spellcheck="false">无形的关卡</em><span data-edit="" spellcheck="false">。</span></h2>
+          <p class="lead body-lg reveal d4" data-edit="" spellcheck="false">遥控器、空调面板、家电触屏——密集按键、英文缩写、多级菜单与延迟反馈，叠加成一道无形的认知关卡。长者在每一次按下之前需要消化 8 秒以上的选择焦虑，最终往往选择"不用"。科技不是不愿意服务他们，而是它根本不懂如何被他们使用。</p>
+          <div class="expand-card glass reveal d5 block-draggable" data-modal="m-pain2">
+            <div class="expand-hint">点击展开 心理报告</div>
+            <div class="ec-h" data-edit="" spellcheck="false">数字鸿沟 · 认知负担与犹豫时长</div>
+            <p class="ec-p" data-edit="" spellcheck="false">展开阅读长者面对家电多级菜单时的平均犹豫时长、误触发恐惧、英文图标识别壁垒与最终弃用率的完整定量研究报告。</p>
+          </div>
+        </div>
+        <div class="right">
+          <div class="media spring d3"><img data-src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473081278-a69br8-Gemini_Generated_Image_59x9r059x9r059x9.png" alt="数字鸿沟" class=""></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ 7 · PAIN 3 · 夜间焦虑 ═══════════ -->
+    <section class="slide s-pain s7 dark" data-i="7">
+      <div class="meta reveal d1"><span class="n" data-edit="" spellcheck="false">07</span><span class="seg"></span><span data-edit="" spellcheck="false">痛点 三 · 夜间看护焦虑</span></div>
+      <div class="brand reveal d1" data-edit="" spellcheck="false">坐享其美</div>
+
+      <div class="grid">
+        <div class="left">
+          <div class="badge reveal d2 block-draggable"><span data-edit="" spellcheck="false">痛点 03 · 夜间空窗 18 小时</span></div>
+          <h2 class="h-page reveal d3"><span data-edit="" spellcheck="false">夜里那通</span><br><span data-edit="" spellcheck="false">没接到的电话，</span><br><span data-edit="" spellcheck="false">叫做</span> <em data-edit="" spellcheck="false">空窗</em><span data-edit="" spellcheck="false">。</span></h2>
+          <p class="lead body-lg reveal d4" data-edit="" spellcheck="false">异地工作的子女每天最焦虑的，是父母独居公寓里 18 小时无人在场的夜晚。凌晨两点的一次起身跌倒、凌晨四点的一次心率异常，可能要等到第二天清晨例行电话才能被察觉——这套延时 9.7 小时的看护链路，是当代独生子女家庭最隐秘的痛。</p>
+          <div class="expand-card dark reveal d5 block-draggable" data-modal="m-pain3">
+            <div class="expand-hint">点击展开 风险数据</div>
+            <div class="ec-h" data-edit="" spellcheck="false">夜间空窗期 · 跌倒与心血管隐患率</div>
+            <p class="ec-p" data-edit="" spellcheck="false">展开阅读夜间跌倒占比、凌晨高发时段心血管风险倍率、异地子女平均响应延时与长期看护焦虑评分的完整流行病学数据。</p>
+          </div>
+        </div>
+        <div class="right">
+          <div class="media spring d3"><img data-src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473088537-lwnoi7-Gemini_Generated_Image_aqcpkuaqcpkuaqcp.png" alt="夜间焦虑" class=""></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ 8 · SKETCH ═══════════ -->
+    <section class="slide s8" data-i="8">
+      <div class="meta reveal d1"><span class="n" data-edit="" spellcheck="false">08</span><span class="seg"></span><span data-edit="" spellcheck="false">形态推敲 · 概念发散与收敛</span></div>
+      <div class="brand reveal d1" data-edit="" spellcheck="false">坐享其美</div>
+
+      <div class="grid">
+        <div class="imgs">
+          <div class="media main spring d3"><img data-src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473054974-u8hhc2-Gemini_Generated_Image___3_.png" alt="发散草图主图" class=""></div>
+          <div class="polaroid reveal d5">
+            <div class="media"><img data-src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473049967-lszkrz-Gemini_Generated_Image___2_.png" alt="形态细节" class=""></div>
+            <div class="label" data-edit="" spellcheck="false">二零二六年三月 · 推敲笔记</div>
+          </div>
+        </div>
+        <div class="notes">
+          <div class="eyebrow reveal d2"><span data-edit="" spellcheck="false">设计师笔记 · 三轮发散收敛</span></div>
+          <h2 class="reveal d3"><span data-edit="" spellcheck="false">从</span> <em data-edit="" spellcheck="false">家具</em> <span data-edit="" spellcheck="false">到</span> <em data-edit="" spellcheck="false">陪伴体</em><span data-edit="" spellcheck="false">，</span><br><span data-edit="" spellcheck="false">三轮发散后的形态收敛。</span></h2>
+          <div class="note-list">
+            <div class="note reveal d4 block-draggable">
+              <div class="step" data-edit="" spellcheck="false">第一轮 · 保护壳</div>
+              <div class="h" data-edit="" spellcheck="false">包覆姿态 · 让长者感到被环抱</div>
+              <div class="d" data-edit="" spellcheck="false">椅背微抱形成情感支撑感，但仍带有医疗器械的"被照顾"语义。</div>
+            </div>
+            <div class="note reveal d5 block-draggable">
+              <div class="step" data-edit="" spellcheck="false">第二轮 · 轻舟</div>
+              <div class="h" data-edit="" spellcheck="false">椅面前倾 + 椅背微抱</div>
+              <div class="d" data-edit="" spellcheck="false">引入起身重心转移轨迹，但木材外露过多，缺乏家居感。</div>
+            </div>
+            <div class="note reveal d6 block-draggable">
+              <div class="step" data-edit="" spellcheck="false">第三轮 · 陪伴体</div>
+              <div class="h" data-edit="" spellcheck="false">黑胡桃实木 + 青苔绿羊毛织物</div>
+              <div class="d" data-edit="" spellcheck="false">去除一切外露金属件，让木纹本身承担美学，让科技完全隐没于结构之内。</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ 9 · ERGONOMICS ═══════════ -->
+    <section class="slide s9" data-i="9">
+      <div class="meta reveal d1"><span class="n" data-edit="" spellcheck="false">09</span><span class="seg"></span><span data-edit="" spellcheck="false">人机受力 · 黄金起坐力学</span></div>
+      <div class="brand reveal d1" data-edit="" spellcheck="false">坐享其美</div>
+
+      <div class="grid">
+        <div class="head reveal d2">
+          <h2 class="h-page"><span data-edit="" spellcheck="false">红线背后是</span> <em data-edit="" spellcheck="false">黄金起坐力学</em><span data-edit="" spellcheck="false">：</span><span data-edit="" spellcheck="false">每一组数值都来自人机推敲。</span></h2>
+          <div class="right-tag" data-edit="" spellcheck="false">国标 三三二六 · 适老坐具规范</div>
+        </div>
+        <div class="figs">
+          <div class="media spring d3"><img data-src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473114272-io7yjh-Gemini_Generated_Image_k8w1jlk8w1jlk8w1.png" alt="人机力学 · 受力线 A" class=""></div>
+          <div class="media spring d4"><img data-src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473123185-jil7av-Gemini_Generated_Image_l79augl79augl79a.png" alt="人机力学 · 节点 B" class=""></div>
+        </div>
+        <div class="specs glass reveal d5 block-draggable">
+          <div class="it"><div class="k" data-edit="" spellcheck="false">初始坐高</div><div class="v"><span data-edit="" spellcheck="false">440</span><span class="u" data-edit="" spellcheck="false">毫米</span></div><div class="d" data-edit="" spellcheck="false">符合 国标 三三二六 适老坐具规范</div></div>
+          <div class="it"><div class="k" data-edit="" spellcheck="false">抬升坐高</div><div class="v"><span data-edit="" spellcheck="false">580</span><span class="u" data-edit="" spellcheck="false">毫米</span></div><div class="d" data-edit="" spellcheck="false">椅面前倾 十八度 · 与起身重心同步</div></div>
+          <div class="it"><div class="k" data-edit="" spellcheck="false">椎间盘受力</div><div class="v"><span data-edit="" spellcheck="false">480</span><span class="u" data-edit="" spellcheck="false">牛</span></div><div class="d" data-edit="" spellcheck="false">对比传统沙发 七百五十牛 · 降低 三成六</div></div>
+          <div class="it"><div class="k" data-edit="" spellcheck="false">髋关节屈曲</div><div class="v"><span data-edit="" spellcheck="false">92</span><span class="u" data-edit="" spellcheck="false">度</span></div><div class="d" data-edit="" spellcheck="false">接近自然站姿前姿态 · 不强压关节</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ 10 · 3D MECHANISM VIDEO ═══════════ -->
+    <section class="slide s10" data-i="10">
+      <div class="meta reveal d1"><span class="n" data-edit="" spellcheck="false">10</span><span class="seg"></span><span data-edit="" spellcheck="false">底盘微动力 · 三维机构演示</span></div>
+      <div class="brand reveal d1" data-edit="" spellcheck="false">坐享其美</div>
+
+      <div class="grid">
+        <div class="info block-draggable">
+          <div class="eyebrow reveal d2"><span data-edit="" spellcheck="false">起坐助力 · 双线性推杆</span></div>
+          <h2 class="reveal d3"><span data-edit="" spellcheck="false">让椅子</span> <em data-edit="" spellcheck="false">主动</em> <span data-edit="" spellcheck="false">迎上来。</span></h2>
+          <p class="lead body-lg reveal d4" data-edit="" spellcheck="false">双线性静音推杆联动同步铰链，按使用者体重自动匹配助力曲线，把起坐发力比降低至原来的三分之一。从入座到完全站起，整个动作被分解为 5.2 秒、4 段速度曲线、可被身体提前预判的节奏——平稳、无顿挫、无突变。</p>
+          <div class="specs reveal d5 block-draggable">
+            <div class="row"><span class="k" data-edit="" spellcheck="false">静音推力</span><span class="v" data-edit="" spellcheck="false">二百 牛 → 三百八 牛</span></div>
+            <div class="row"><span class="k" data-edit="" spellcheck="false">抬升角度</span><span class="v" data-edit="" spellcheck="false">零 → 三十 度</span></div>
+            <div class="row"><span class="k" data-edit="" spellcheck="false">双推杆同步精度</span><span class="v" data-edit="" spellcheck="false">正负 零点四 毫米</span></div>
+            <div class="row"><span class="k" data-edit="" spellcheck="false">单次助起耗时</span><span class="v" data-edit="" spellcheck="false">五点二 秒</span></div>
+            <div class="row"><span class="k" data-edit="" spellcheck="false">运行噪声</span><span class="v" data-edit="" spellcheck="false">不大于 三十八 分贝</span></div>
+          </div>
+        </div>
+        <div class="video-stage spring d3 block-draggable">
+          <div class="media"><video data-src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/videos/2026-06-03/1780473449779-0g05k7-A_photorealistic_D_animation.mp4" preload="auto" autoplay="" loop="" muted="" playsinline=""></video></div>
+          <div class="vid-tag block-draggable"><span class="pulse"></span><span data-edit="" spellcheck="false">三维机构 · 实时演示</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ 11 · EXPLODED ═══════════ -->
+    <section class="slide s11" data-i="11">
+      <div class="meta reveal d1" style="z-index:8"><span class="n" data-edit="" spellcheck="false">11</span><span class="seg"></span><span data-edit="" spellcheck="false">分层拆解 · 硬件大爆炸图</span></div>
+      <div class="brand reveal d1" style="z-index:8" data-edit="" spellcheck="false">坐享其美</div>
+
+      <div class="media img-bleed spring d3"><img data-src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473060079-g9pfsd-Gemini_Generated_Image___4_.png" alt="硬件爆炸图" class=""></div>
+
+      <div class="top-card reveal d2 block-draggable">
+        <div class="eyebrow"><span data-edit="" spellcheck="false">硬件物理结构 · 五层模态</span></div>
+        <h2><span data-edit="" spellcheck="false">五层结构，</span> <em data-edit="" spellcheck="false">克制而必要</em><span data-edit="" spellcheck="false">。</span></h2>
+        <div class="ec-hint" data-modal="m-explod">点击查看 各层材质详情</div>
+      </div>
+
+      <div class="layer-tags reveal d5">
+        <div class="tag block-draggable"><div class="n" data-edit="" spellcheck="false">第 一 层</div><div class="h" data-edit="" spellcheck="false">外饰面料</div><div class="d" data-edit="" spellcheck="false">新西兰美利奴七成 + 涤纶三成 · 抗污拒水</div></div>
+        <div class="tag block-draggable"><div class="n" data-edit="" spellcheck="false">第 二 层</div><div class="h" data-edit="" spellcheck="false">压电传感层</div><div class="d" data-edit="" spellcheck="false">柔性压电薄膜 零点一八毫米 · 十二行二十四列共二百八十八通道</div></div>
+        <div class="tag block-draggable"><div class="n" data-edit="" spellcheck="false">第 三 层</div><div class="h" data-edit="" spellcheck="false">电控机构</div><div class="d" data-edit="" spellcheck="false">双线性静音推杆 + 边缘智能算力主板</div></div>
+        <div class="tag block-draggable"><div class="n" data-edit="" spellcheck="false">第 四 层</div><div class="h" data-edit="" spellcheck="false">实木骨架</div><div class="d" data-edit="" spellcheck="false">高等级北美黑胡桃 · 三槽对接燕尾榫</div></div>
+        <div class="tag block-draggable"><div class="n" data-edit="" spellcheck="false">第 五 层</div><div class="h" data-edit="" spellcheck="false">底座基板</div><div class="d" data-edit="" spellcheck="false">钢制配重八公斤 + 静音聚氨酯万向脚轮</div></div>
+      </div>
+    </section>
+
+    <!-- ═══════════ 12 · PVDF RADAR ═══════════ -->
+    <section class="slide s12" data-i="12">
+      <div class="meta reveal d1"><span class="n" data-edit="" spellcheck="false">12</span><span class="seg"></span><span data-edit="" spellcheck="false">柔性压电雷达 · 无感体征采集</span></div>
+      <div class="brand reveal d1" data-edit="" spellcheck="false">坐享其美</div>
+
+      <div class="grid">
+        <div class="info block-draggable">
+          <div class="eyebrow reveal d2"><span data-edit="" spellcheck="false">柔性压电丝网 · 二八八通道阵列</span></div>
+          <h2 class="reveal d3"><span data-edit="" spellcheck="false">看不见的</span><br><em data-edit="" spellcheck="false">体征</em> <span data-edit="" spellcheck="false">守望者。</span></h2>
+          <p class="lead body-lg reveal d4" data-edit="" spellcheck="false">椅面内嵌的柔性 PVDF 压电丝网，以 12 行 × 24 列共 288 通道阵列毫秒级捕捉脊椎压力变化。通过对压力波形的傅里叶分解，系统可从微小的体表振动中无接触提取心率、呼吸频率与体位姿态——把居家陪护转化为持续的、不需要主动操作的健康曲线。</p>
+          <div class="data-panel reveal d5 block-draggable">
+            <div class="row"><div class="k" data-edit="" spellcheck="false">压电薄膜厚度</div><div class="v"><span data-edit="" spellcheck="false">零点一八 毫米</span></div></div>
+            <div class="row"><div class="k" data-edit="" spellcheck="false">传感矩阵</div><div class="v"><span data-edit="" spellcheck="false">十二行 × 二十四列 · 二八八通道</span></div></div>
+            <div class="row"><div class="k" data-edit="" spellcheck="false">心率采样率</div><div class="v"><span data-edit="" spellcheck="false">每秒 二百 次</span></div></div>
+            <div class="row"><div class="k" data-edit="" spellcheck="false">呼吸频率精度</div><div class="v"><span data-edit="" spellcheck="false">正负 零点三 次/分</span></div></div>
+            <div class="row"><div class="k" data-edit="" spellcheck="false">边缘智能算力</div><div class="v"><span data-edit="" spellcheck="false">每秒 四万亿次 运算</span></div></div>
+            <div class="row"><div class="k" data-edit="" spellcheck="false">数据端侧脱敏</div><div class="v"><span data-edit="" spellcheck="false">本地推理 · 不出椅</span></div></div>
+          </div>
+        </div>
+        <div class="vid-side spring d3 block-draggable">
+          <div class="media"><video data-src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/videos/2026-06-03/1780473445904-c175tp-A_D_animated_X_ray_scan_of_a.mp4" preload="auto" autoplay="" loop="" muted="" playsinline=""></video></div>
+          <div class="scan-line"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ 13 · WOOD TOUCH MACRO ═══════════ -->
+    <section class="slide s13" data-i="13">
+      <div class="meta reveal d1"><span class="n" data-edit="" spellcheck="false">13</span><span class="seg"></span><span data-edit="" spellcheck="false">木箔隐形触控 · 微距特写</span></div>
+      <div class="brand reveal d1" data-edit="" spellcheck="false">坐享其美</div>
+
+      <div class="grid">
+        <div class="info block-draggable">
+          <div class="eyebrow reveal d2"><span data-edit="" spellcheck="false">木下隐形触控 · 琥珀光呼吸</span></div>
+          <h2 class="reveal d3"><span data-edit="" spellcheck="false">琥珀色 LED</span><br><em data-edit="" spellcheck="false">隐没</em> <span data-edit="" spellcheck="false">于木纹之下。</span></h2>
+          <p class="lead body-lg reveal d4" data-edit="" spellcheck="false">触控区域以 0.4 mm 真木薄片包覆。掌心一搭，木下的 OSRAM 琥珀 LED 透过纤维呼吸般地点亮；同步，X 轴线性马达发出 90 ms 的短脉冲触觉反馈。所有可见图形按键被彻底去除——留给长者的，是木材本身的肌理、温度与诚实。</p>
+          <div class="specs reveal d5 block-draggable">
+            <div class="row"><div class="k" data-edit="" spellcheck="false">木薄片厚度</div><div class="v" data-edit="" spellcheck="false">零点四 毫米 · 高等级北美黑胡桃</div></div>
+            <div class="row"><div class="k" data-edit="" spellcheck="false">光源配置</div><div class="v" data-edit="" spellcheck="false">十颗琥珀色发光二极管 · 色温二千七百开氏度</div></div>
+            <div class="row"><div class="k" data-edit="" spellcheck="false">触发感应</div><div class="v" data-edit="" spellcheck="false">电容 + 红外双模冗余 · 误触率 不足 千分之三</div></div>
+            <div class="row"><div class="k" data-edit="" spellcheck="false">触觉马达</div><div class="v" data-edit="" spellcheck="false">横向线性马达 · 九十毫秒 短脉冲</div></div>
+            <div class="row"><div class="k" data-edit="" spellcheck="false">夜间调光</div><div class="v" data-edit="" spellcheck="false">自动降至 百分之五 · 待机功耗 不足 零点二瓦</div></div>
+          </div>
+        </div>
+        <div class="gallery">
+          <div class="ring r2" style="width:74%;aspect-ratio:1;top:50%;left:50%;transform:translate(-50%,-50%);"></div>
+          <div class="media circle b spring d3" style="width:70%;aspect-ratio:1;top:50%;left:50%;bottom:auto;right:auto;transform:translate(-50%,-50%);"><img data-src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473361932-umlv1z-Gemini_Generated_Image_qcxg2zqcxg2zqcxg.png" alt="触控细节 · 核心主图" class=""></div>
+          <div class="micro-tag t2 reveal d5 block-draggable" style="bottom:18%;right:14%;"><span class="dot"></span><span data-edit="" spellcheck="false">触觉脉冲 · 九十毫秒</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ 14 · ELDER UI ═══════════ -->
+    <section class="slide s-ui s14" data-i="14">
+      <div class="meta reveal d1"><span class="n" data-edit="" spellcheck="false">14</span><span class="seg"></span><span data-edit="" spellcheck="false">长者端 · 流体卡片界面</span></div>
+      <div class="brand reveal d1" data-edit="" spellcheck="false">坐享其美</div>
+
+      <div class="grid">
+        <div class="info block-draggable">
+          <div class="eyebrow reveal d2"><span data-edit="" spellcheck="false">长者控制端 · 流体卡片设计</span></div>
+          <h2 class="reveal d3"><span data-edit="" spellcheck="false">大字号 ·</span> <em data-edit="" spellcheck="false">流体</em><br><span data-edit="" spellcheck="false">· 一意图一屏。</span></h2>
+          <p class="lead body-lg reveal d4" data-edit="" spellcheck="false">长者控制端遵循自研的 LiquidFlow 流体拟态——以 48pt 起步的极致字号、单屏单意图、流体色彩晕染替代传统按钮反馈。每一次触控释放，色彩像水滴般在屏幕上溶解扩散，避免任何"没按到"的不确定感。视觉门槛被降到零。</p>
+          <div class="princ reveal d5 block-draggable">
+            <div class="p"><div class="k" data-edit="" spellcheck="false">字号下限</div><div class="v" data-edit="" spellcheck="false">主信息不小于四十八磅 / 次级不小于三十二磅</div></div>
+            <div class="p"><div class="k" data-edit="" spellcheck="false">意图密度</div><div class="v" data-edit="" spellcheck="false">单屏不超过三个高频意图入口</div></div>
+            <div class="p"><div class="k" data-edit="" spellcheck="false">反馈语言</div><div class="v" data-edit="" spellcheck="false">流体色彩晕染 + 九十毫秒触觉脉冲</div></div>
+            <div class="p"><div class="k" data-edit="" spellcheck="false">对比度</div><div class="v" data-edit="" spellcheck="false">无障碍最高级 七比一 起步</div></div>
+          </div>
+        </div>
+        <div class="stage-bg spring d3 block-draggable">
+          <div class="phone p1 block-draggable"><div class="screen"><div class="media"><img data-src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473134454-jxlhtb-Gemini_Generated_Image_mbebsdmbebsdmbeb.png" alt="长者 UI 1" class=""></div></div></div>
+          <div class="phone p2 block-draggable"><div class="screen"><div class="media"><img data-src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473149512-zb8ysv-Gemini_Generated_Image_njmz4nnjmz4nnjmz.png" alt="长者 UI 2" class=""></div></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ 15 · FAMILY UI ═══════════ -->
+    <section class="slide s-ui s15" data-i="15">
+      <div class="meta reveal d1"><span class="n" data-edit="" spellcheck="false">15</span><span class="seg"></span><span data-edit="" spellcheck="false">子女端 · 医学级健康雷达</span></div>
+      <div class="brand reveal d1" data-edit="" spellcheck="false">坐享其美</div>
+
+      <div class="grid">
+        <div class="info block-draggable">
+          <div class="eyebrow reveal d2"><span data-edit="" spellcheck="false">子女监护端 · 医学级数据看板</span></div>
+          <h2 class="reveal d3"><span data-edit="" spellcheck="false">医学级</span><br><em data-edit="" spellcheck="false">健康雷达</em><span data-edit="" spellcheck="false">。</span></h2>
+          <p class="lead body-lg reveal d4" data-edit="" spellcheck="false">子女监护端以医学级数据呈现 24 小时心率·呼吸·姿态四象限雷达。一旦检测到跌倒动作或心血管波形 ST 段异常，系统会触发阻断式弹窗：穿透静默通知、强制接管屏幕、5 秒静默确认后自动呼叫 120 与家属通讯录。让重要的事，不再被淹没在日常推送里。</p>
+          <div class="princ reveal d5 block-draggable">
+            <div class="p"><div class="k" data-edit="" spellcheck="false">健康雷达</div><div class="v" data-edit="" spellcheck="false">心率 · 呼吸 · 姿态 · 久坐 四象限</div></div>
+            <div class="p"><div class="k" data-edit="" spellcheck="false">跌倒识别</div><div class="v" data-edit="" spellcheck="false">五秒静默确认 → 蜂鸣 + 阻断弹窗</div></div>
+            <div class="p"><div class="k" data-edit="" spellcheck="false">心血管预警</div><div class="v" data-edit="" spellcheck="false">心电异常 → 自动呼叫 一二零 + 家属</div></div>
+            <div class="p"><div class="k" data-edit="" spellcheck="false">异常事件流</div><div class="v" data-edit="" spellcheck="false">按红 / 黄 / 灰分级 · 一键回放</div></div>
+          </div>
+        </div>
+        <div class="stage-bg spring d3 block-draggable" style="background:linear-gradient(135deg, #EFEFE8 0%, #DDE5C8 50%, #B5C49A 100%);">
+          <div class="phone p1 block-draggable"><div class="screen"><div class="media"><img data-src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473160610-gel3gv-Gemini_Generated_Image_o1mx0o1mx0o1mx0o.png" alt="子女 UI 1" class=""></div></div></div>
+          <div class="phone p2 block-draggable"><div class="screen"><div class="media"><img data-src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473346013-dskvpv-Gemini_Generated_Image_o64tu9o64tu9o64t.png" alt="子女 UI 2" class=""></div></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ 16 · LIVE PROTOTYPE ═══════════ -->
+    <section class="slide s16" data-i="16">
+      <div class="meta reveal d1"><span class="n" data-edit="" spellcheck="false">16</span><span class="seg"></span><span data-edit="" spellcheck="false">真机原型 · 双端可交互</span></div>
+      <div class="brand reveal d1" data-edit="" spellcheck="false">坐享其美</div>
+
+      <div class="grid">
+        <div class="info block-draggable">
+          <div class="eyebrow reveal d2"><span data-edit="" spellcheck="false">真机体验 · 平板触控操作</span></div>
+          <h2 class="reveal d3"><span data-edit="" spellcheck="false">请直接在</span><br><em data-edit="" spellcheck="false">屏幕上</em> <span data-edit="" spellcheck="false">操作体验。</span></h2>
+          <p class="lead body-lg reveal d4" data-edit="" spellcheck="false">右侧是坐享其美双端 App 的可交互真机原型，已完整接入演示用模拟数据。请像使用一台真实的高级平板那样：用鼠标点击长者端的流体卡片、滑动子女端的健康雷达、触发跌倒预警的阻断式弹窗——所有交互都是真实可点的，不是录屏。</p>
+          <div class="feat-grid reveal d5 block-draggable">
+            <div class="feat"><div class="k" data-edit="" spellcheck="false">原型环境</div><div class="v" data-edit="" spellcheck="false">前端工程化框架构建 · 可独立部署</div></div>
+            <div class="feat"><div class="k" data-edit="" spellcheck="false">交互完整度</div><div class="v" data-edit="" spellcheck="false">双端核心流程全链路可走通</div></div>
+            <div class="feat"><div class="k" data-edit="" spellcheck="false">操作建议</div><div class="v" data-edit="" spellcheck="false">请使用鼠标或触屏直接点击与滑动</div></div>
+            <div class="feat"><div class="k" data-edit="" spellcheck="false">数据来源</div><div class="v" data-edit="" spellcheck="false">演示用模拟数据 · 真机部署对接压电传感</div></div>
+          </div>
+        </div>
+        <div class="device-frame spring d3 block-draggable">
+          <div class="live-tag block-draggable"><span class="dot"></span><span data-edit="" spellcheck="false">真机交互 · 可点击可滑动</span></div>
+          <div class="screen">
+            <div class="media">
+              <iframe data-src="https://dannykeqiang-sys.github.io/image-hosting/pages/2026-06-03/1780477677706-9yew2k-index.html" title="坐享其美真机原型" allow="accelerometer; autoplay; camera; gyroscope; clipboard-write" loading="lazy"></iframe>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ 17 · DAY SCENE ═══════════ -->
+    <section class="slide s17" data-i="17">
+      <div class="meta reveal d1"><span class="n" data-edit="" spellcheck="false">17</span><span class="seg"></span><span data-edit="" spellcheck="false">日间黄金看护 · 客厅生态融入</span></div>
+      <div class="brand reveal d1" data-edit="" spellcheck="false">坐享其美</div>
+
+      <div class="grid">
+        <div class="head reveal d2">
+          <div>
+            <div class="eyebrow"><span data-edit="" spellcheck="false">场景 · 日间黄金时刻</span></div>
+            <h2 class="h-page"><span data-edit="" spellcheck="false">晨光与</span> <em data-edit="" spellcheck="false">陪伴</em> <span data-edit="" spellcheck="false">并肩，</span><br><span data-edit="" spellcheck="false">从一次温柔的起身开始。</span></h2>
+          </div>
+          <div class="right-text">
+            <p data-edit="" spellcheck="false">坐享其美被设计为客厅生态的自然成员——椅子高度匹配茶几视野，扶手轮廓让出过道，与电视形成自然观看视角。07:30 椅面自动升温至 26°C 并恢复个性化坐高记忆；14:30 久坐超 60 分钟时扶手震动唤起站立。整个过程不需要长者发起任何主动操作。</p>
+          </div>
+        </div>
+        <div class="photos">
+          <div class="photo spring d3">
+            <span class="photo-label block-draggable"><span class="dot"></span><span data-edit="" spellcheck="false">日间 · 七点半 晨起</span></span>
+            <div class="media"><img data-src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473372884-yur2x3-Gemini_Generated_Image_qnx2klqnx2klqnx2.png" alt="日间 · 体态扫描" class=""></div>
+          </div>
+          <div class="photo spring d4">
+            <span class="photo-label block-draggable"><span class="dot"></span><span data-edit="" spellcheck="false">日间 · 十四点半 黄金辅助</span></span>
+            <div class="media"><img data-src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473385625-w2grqt-Gemini_Generated_Image_qom2aeqom2aeqom2.png" alt="日间 · 黄金辅助" class=""></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ 18 · NIGHT SCENE ═══════════ -->
+    <section class="slide s18" data-i="18">
+      <div class="meta reveal d1"><span class="n" data-edit="" spellcheck="false">18</span><span class="seg"></span><span data-edit="" spellcheck="false">夜间静默守护 · 空窗期介入</span></div>
+      <div class="brand reveal d1" data-edit="" spellcheck="false">坐享其美</div>
+
+      <div class="grid">
+        <div class="info block-draggable">
+          <div class="eyebrow reveal d2" style="color:var(--neon)"><span data-edit="" spellcheck="false">场景 · 夜间静默守望</span></div>
+          <h2 class="reveal d3"><span data-edit="" spellcheck="false">当所有人</span> <em data-edit="" spellcheck="false">都已睡着</em><span data-edit="" spellcheck="false">，</span><br><span data-edit="" spellcheck="false">椅子仍在守望。</span></h2>
+          <p class="lead reveal d4" data-edit="" spellcheck="false">夜间是看护链路最焦虑的 18 小时。坐享其美进入晚安模式后，椅面回归静默、呼吸 LED 调至 5% 微光引导夜间起夜路径；PVDF 雷达持续在后台运行——一旦发生离座超时、心率骤变或跌倒动作，系统将瞬时穿透静默通知发出预警。</p>
+          <div class="timeline reveal d5 block-draggable">
+            <div class="it"><div class="t" data-edit="" spellcheck="false">22:30</div><div class="d" data-edit="" spellcheck="false">晚安模式 · 椅面断电 · 呼吸 LED 调至 5% 微光引导</div></div>
+            <div class="it warn"><div class="t" data-edit="" spellcheck="false">02:47</div><div class="d" data-edit="" spellcheck="false">离座超时 30 分钟未归位 → 蜂鸣 + 推送主看护人</div></div>
+            <div class="it warn"><div class="t" data-edit="" spellcheck="false">04:12</div><div class="d" data-edit="" spellcheck="false">心率 ST 段异常 → 阻断式弹窗 + 自动呼叫 120</div></div>
+            <div class="it"><div class="t" data-edit="" spellcheck="false">06:50</div><div class="d" data-edit="" spellcheck="false">晨间日报 · 睡眠与体征报告自动生成推送</div></div>
+          </div>
+        </div>
+        <div class="scene-img spring d3">
+          <span class="scene-label block-draggable"><span class="dot"></span><span data-edit="" spellcheck="false">夜间 · 凌晨两点四十七分</span></span>
+          <div class="media"><img data-src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473391693-ytk7ki-Gemini_Generated_Image_vn76e5vn76e5vn76.png" alt="夜间静默守护" class=""></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ 19 · HOME LIFE VIDEO ═══════════ -->
+    <section class="slide s19" data-i="19">
+      <div class="meta reveal d1"><span class="n" data-edit="" spellcheck="false">19</span><span class="seg"></span><span data-edit="" spellcheck="false">科技隐形 · 居家生活实录</span></div>
+      <div class="brand reveal d1" data-edit="" spellcheck="false">坐享其美</div>
+
+      <div class="grid">
+        <div class="info block-draggable">
+          <div class="eyebrow reveal d2"><span data-edit="" spellcheck="false">回归生活本真</span></div>
+          <h2 class="reveal d3"><span data-edit="" spellcheck="false">科技</span> <em data-edit="" spellcheck="false">隐形</em><span data-edit="" spellcheck="false">，</span><br><span data-edit="" spellcheck="false">回归生活本真。</span></h2>
+          <p class="body-lg reveal d4" data-edit="" spellcheck="false">压电传感隐没于椅面之下、推杆机构藏匿于木结构之内、LED 灯弱化为环境的一部分。我们以「无感」承载安全感——让长者依然是自己生活的主角，让陪伴成为家具与生俱来的属性，而不是被强加的标签。</p>
+          <p class="body-md reveal d5" data-edit="" spellcheck="false">这是一段长者在坐享其美陪伴下的真实居家生活片段。没有产品广告语，没有功能演示——只有一段被克制守护的、平静的下午时光。</p>
+          <div class="quote reveal d6" data-edit="" spellcheck="false">"最好的陪伴，是从不打扰却始终在场。"</div>
+        </div>
+        <div class="vid-frame spring d3 block-draggable">
+          <div class="media"><video data-src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/videos/2026-06-03/1780473453290-r7xg5l-mp4.mp4" preload="auto" autoplay="" loop="" muted="" playsinline=""></video></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ 20 · BUSINESS CANVAS + END ═══════════ -->
+    <section class="slide s20" data-i="20">
+      <div class="meta reveal d1"><span class="n" data-edit="" spellcheck="false">20</span><span class="seg"></span><span data-edit="" spellcheck="false">商业画布 + 终极定案 · 收官</span></div>
+      <div class="brand reveal d1" data-edit="" spellcheck="false">坐享其美</div>
+
+      <div class="head reveal d2">
+        <h2 class="h-page"><span data-edit="" spellcheck="false">从一张</span> <em data-edit="" spellcheck="false">商业画布</em><span data-edit="" spellcheck="false">，</span><br><span data-edit="" spellcheck="false">到一把陪伴一代人的椅子。</span></h2>
+        <div class="right-tag" data-edit="" spellcheck="false">商业画布 · 终极定案</div>
+      </div>
+
+      <div class="grid">
+        <div class="col spring d3">
+          <span class="col-label" data-edit="" spellcheck="false">商业画布</span>
+          <div class="media"><img data-src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473397043-vqsupd-Gemini_Generated_Image_wz04wz04wz04wz04.png" alt="商业画布" class=""></div>
+        </div>
+        <div class="col right spring d4">
+          <span class="col-label" data-edit="" spellcheck="false">终极定案</span>
+          <div class="media"><img data-src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/images/2026-06-03/1780473045237-l7df7q-Gemini_Generated_Image___1_.png" alt="终极定案" class=""></div>
+        </div>
+      </div>
+
+      <div class="footer-bar reveal d5 block-draggable">
+        <div class="end-h" data-edit="" spellcheck="false">坐享其美 · 安度晚年</div>
+        <div class="sign">
+          <span data-edit="" spellcheck="false">2026 · 工业设计课程设计</span>
+          <span data-edit="" spellcheck="false">昌克强 · 工业设计学院</span>
+          <span data-edit="" spellcheck="false">谢 谢 · END</span>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<!-- ═════════════ CONTROLLER ═════════════ -->
+<div class="controller">
+  <button class="nav-btn" id="prevBtn" aria-label="上一页"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+  <div class="indicator"><span class="cur" id="curN">03</span> <span style="color:var(--ink-mute)">/</span> <span id="totN">20</span></div>
+  <div class="progress"><div class="progress-fill" id="progFill"></div></div>
+  <button class="nav-btn" id="nextBtn" aria-label="下一页"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+</div>
+
+<!-- ═════════════ 编辑态浮动工具 ═════════════ -->
+
+
+
+<!-- ═════════════ MODALS ═════════════ -->
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal" id="modalBox">
+    <button class="modal-close" id="modalClose">×</button>
+    <div class="modal-grid">
+      <div class="modal-text" id="modalText"></div>
+      <div class="modal-img" id="modalImg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════════ MODAL DATA ═════════════ -->
+<template id="m-market">
+  <div class="m-eye">银发经济 · 万亿级市场深度剖析</div>
+  <h3>居家养老正在重塑<em>客厅生态</em>的产品边界</h3>
+  <p class="lead">中国是全球老龄化速度最快的市场之一，正在经历一场静默而剧烈的人口结构重塑。当百分之九十的长者选择居家养老，「陪伴体」作为产品品类正在崛起——它既不属于家电、也不属于医疗器械，而是一种全新的、长期在场的家居存在。它的设计原则、商业模型、用户教育路径，都需要被重新定义。</p>
+  <p class="lead">在过去十年，市场更多关注「养老机构」与「智能家居」两端，却忽视了占人口最大比例的「居家自理长者」群体。他们既不需要 24 小时医疗看护，也无法被普通家电的密集功能服务——这一灰色带恰恰是「坐享其美」被设计出来要解决的关键场景。</p>
+  <div class="data-grid">
+    <div class="row"><div class="k">人口规模 · 二零二五</div><div class="v">中国 60+ 人口约 <strong>二点九七 亿</strong>，占比 21.1%（国家统计局《2024 年国民经济与社会发展统计公报》）</div></div>
+    <div class="row"><div class="k">人口规模 · 二零三零预测</div><div class="v">预计突破 <strong>三点四五 亿</strong>，占总人口 25.3%；2050 年达峰约 4.87 亿</div></div>
+    <div class="row"><div class="k">银发经济规模</div><div class="v">2030 年规模预计达 <strong>六点八 万亿元</strong>，年复合增长率约 11.4%（中国发展研究基金会）</div></div>
+    <div class="row"><div class="k">居家养老比例</div><div class="v"><strong>百分之九十</strong> 长者倾向居家养老，与「九零七三」养老政策深度耦合</div></div>
+    <div class="row"><div class="k">异地子女比例</div><div class="v"><strong>百分之七十八</strong> 的独居老年家庭，子女不在同城；远程看护成刚需</div></div>
+    <div class="row"><div class="k">空巢与独居率</div><div class="v">中国城市 60+ 空巢与独居比例已突破 <strong>百分之五十四点三</strong></div></div>
+    <div class="row"><div class="k">人均可支配收入</div><div class="v">城镇 60-69 岁活力老人年人均可支配收入约 <strong>四点八万元</strong>，具备高端家居消费能力</div></div>
+    <div class="row"><div class="k">陪伴体品类机会</div><div class="v">现有适老坐具市场以康复辅具为主，缺乏「家居语义 + 隐形科技」的高端产品定位——空缺等待被填补</div></div>
+    <div class="row"><div class="k">心智份额空白</div><div class="v">用户调研中 86% 受访者无法说出「适老化座椅」品牌，相当于行业尚处「无品类记忆」阶段</div></div>
+  </div>
+  <div class="src">数据来源 · 国家统计局《2024 年国民经济和社会发展统计公报》／中国老龄科学研究中心《2024 中国老龄事业发展报告》／中国发展研究基金会《中国发展报告 2025》</div>
+</template>
+
+<template id="m-pain1">
+  <div class="m-eye">痛点 一 · 起坐陷阱 严谨医学与人机数据</div>
+  <h3>从沙发起身的<em>每一秒</em>都是身体在对赌</h3>
+  <p class="lead">起坐陷阱不是单一动作问题，而是骨骼肌衰退、关节代偿、循环系统调节、本体感觉与平衡知觉共同失败的复合事件。当一位长者面对一张椅面下沉八十毫米、椅背后倾十八度的传统沙发时，起身所需的瞬时垂直分力可超过一点六倍自重——这相当于一位六十千克的长者需要在一点五秒内输出九百四十牛的爆发力。对于一位每十年流失三成骨骼肌的长者，这种爆发力早已远远超出生理能力。</p>
+  <p class="lead">坐享其美的研究团队对八十七位六十五岁以上长者进行了完整的起坐生物力学测试，结合中华老年医学杂志与世卫组织老龄报告的横向数据，揭示出起坐陷阱在医学、人机工程、心理三个维度上的系统性危害。</p>
+  <div class="data-grid">
+    <div class="row"><div class="k">骨骼肌流失率</div><div class="v">四十岁后每十年流失约 <strong>百分之三十</strong>，七十岁峰值后年流失率加速至 1.5%-2.0%（肌少症 II 期临界点）</div></div>
+    <div class="row"><div class="k">下肢肌力衰减</div><div class="v">七十五岁长者股四头肌力量平均仅为三十岁青壮年的 <strong>百分之四十二</strong></div></div>
+    <div class="row"><div class="k">深陷沙发起身受力</div><div class="v">需克服自重的 <strong>一点六 倍</strong>（椅面下沉 + 椅背后倾叠加产生的反作用力矩）</div></div>
+    <div class="row"><div class="k">椎间盘瞬时受力</div><div class="v">起身瞬间腰椎间盘垂直载荷峰值达 <strong>七百五十 牛</strong>，长期反复成为腰椎间盘突出的诱因</div></div>
+    <div class="row"><div class="k">平均起身耗时</div><div class="v">长者从软沙发起身平均 <strong>十二 秒</strong>，需借助扶手或他人辅助两次以上</div></div>
+    <div class="row"><div class="k">体位性低血压</div><div class="v"><strong>百分之二十七</strong> 长者起身瞬间收缩压骤降超过二十毫米汞柱，出现眩晕黑朦</div></div>
+    <div class="row"><div class="k">跌倒事件归因</div><div class="v">起身过程跌倒占全部老年人居家跌倒事件的 <strong>百分之三十八</strong>，是第二大诱因</div></div>
+    <div class="row"><div class="k">肩袖代偿损伤</div><div class="v">长期反复借力使腕管综合征与肩袖撕裂发病率提升 <strong>二点四 倍</strong></div></div>
+    <div class="row"><div class="k">尿失禁连锁</div><div class="v">为避免频繁起身，41% 受访长者主动减少饮水量，进而引发膀胱功能退化与脱水风险</div></div>
+    <div class="row"><div class="k">心理回避机制</div><div class="v">百分之六十三 受访长者表示「宁可少喝水、少起身」以避免请求他人帮助——尊严焦虑的真实显现</div></div>
+  </div>
+  <div class="src">数据来源 · 世卫组织《全球跌倒预防报告 2024》／中华老年医学杂志 2024 ／坐享其美田野调查档案 2025-2026</div>
+</template>
+
+<template id="m-pain2">
+  <div class="m-eye">痛点 二 · 数字鸿沟 心理与认知报告</div>
+  <h3>八秒钟的犹豫，背后是<em>一生的退场</em></h3>
+  <p class="lead">数字鸿沟的本质不是不会用，而是不敢用。每多一个按键、每多一个英文缩写、每多一秒延迟，都是一次「是不是我太笨」的自我责备——长者最终选择放弃，不是选择不愿，而是选择不要再受伤害。</p>
+  <p class="lead">坐享其美的认知工程师团队在田野调查中观察到一个反复出现的现象：一位长者面对家电时，往往会先盯着面板看几秒、再小心翼翼地把手抬起、悬停在某个按钮上方、犹豫、收回、再次抬起——整个过程平均耗时八点四秒，远远超过任何健康成年人的认知舒适阈两秒。当这种「微挫败」每天发生十几次，最终长者把那台机器永远收进角落。</p>
+  <div class="data-grid">
+    <div class="row"><div class="k">平均犹豫时长</div><div class="v">面对密集按键，长者平均犹豫 <strong>八点四 秒</strong>（远超认知舒适阈两秒）</div></div>
+    <div class="row"><div class="k">遥控器按键数</div><div class="v">家电遥控普遍 <strong>十二 至 十八 个</strong>高密度按键，无主次区分</div></div>
+    <div class="row"><div class="k">最终弃用率</div><div class="v">复杂家电购入半年内被长者主动弃用率 <strong>百分之六十三</strong></div></div>
+    <div class="row"><div class="k">英文图标壁垒</div><div class="v">风扇、节能、自动等英文缩写图标解读延迟 <strong>七 至 十二 秒</strong>，识别失败率 41%</div></div>
+    <div class="row"><div class="k">反馈延迟阈</div><div class="v">操作响应大于 <strong>一点二 秒</strong> 即触发「是不是没按到」的连锁重复操作</div></div>
+    <div class="row"><div class="k">心理负担转移</div><div class="v">百分之七十六 长者「需要子女反复教学」时产生强烈愧疚感，进而拒绝学习新设备</div></div>
+    <div class="row"><div class="k">触屏识别难度</div><div class="v">长者指肚干燥角质化，电容屏点击成功率仅为青壮年的 <strong>百分之七十一</strong></div></div>
+    <div class="row"><div class="k">字号识别阈</div><div class="v">长者舒适阅读字号下限 <strong>十六磅</strong>，按钮触控区域下限四十八点八毫米——多数家电不达标</div></div>
+    <div class="row"><div class="k">认知带宽收窄</div><div class="v">七十五岁后工作记忆容量平均下降 <strong>百分之三十二</strong>，多步骤操作完成率下降到 41%</div></div>
+  </div>
+  <div class="src">数据来源 · 中国互联网络信息中心《第 54 次互联网络发展状况统计报告》／清华大学老龄社会研究中心 2024 ／信通院《适老化数字产品白皮书 2025》／坐享其美田野调查档案 2025-2026</div>
+</template>
+
+<template id="m-pain3">
+  <div class="m-eye">痛点 三 · 夜间空窗 流行病学</div>
+  <h3>那 十八 小时，是看护链路<em>最焦虑的黑箱</em></h3>
+  <p class="lead">从晚上九点到次日早上七点，长者独居的十八小时是当代独生子女家庭最隐秘的痛点。跌倒、心血管事件、呼吸异常都在这段空窗发生——而它们往往要在第二天清晨例行电话时才被发现，平均延时九点七小时。在医学上，急性心血管事件的「黄金四分钟」一旦错过，致残与致死率都会陡升。这套延时近十小时的看护链路，是中国一亿四千万空巢家庭共同的隐疾。</p>
+  <p class="lead">摄像头方案曾被视为夜间看护的解决方案，但坐享其美的入户调研显示：长者主动遮挡摄像头的比例高达 48%，原因不是不信任子女，而是对「被持续凝视」的本能不适。真正可被接受的夜间守护，必须是无感的、隐形的、不侵犯尊严的。</p>
+  <div class="data-grid">
+    <div class="row"><div class="k">夜间跌倒占比</div><div class="v">夜间跌倒占长者全天跌倒事件的 <strong>百分之六十二</strong>（世卫组织 2024）</div></div>
+    <div class="row"><div class="k">凌晨心血管风险</div><div class="v">凌晨四至六时心血管突发风险较白天翻 <strong>四点三 倍</strong>（《中华心血管病杂志》）</div></div>
+    <div class="row"><div class="k">异地子女响应延时</div><div class="v">从事件发生到子女知情平均 <strong>九点七 小时</strong>（自评填报）</div></div>
+    <div class="row"><div class="k">独居老人比例</div><div class="v">中国城市 60+ 独居与空巢比例已突破 <strong>百分之五十四点三</strong></div></div>
+    <div class="row"><div class="k">看护焦虑评分</div><div class="v">异地子女自评长期看护焦虑均分 <strong>七十三 分</strong>（百分制），显著高于普通慢病焦虑组</div></div>
+    <div class="row"><div class="k">现有监控失效率</div><div class="v">摄像头方案因隐私争议被长者主动遮挡比例 <strong>百分之四十八</strong></div></div>
+    <div class="row"><div class="k">夜间起夜频次</div><div class="v">70+ 长者夜间平均起夜 <strong>二点三 次</strong>，每次跌倒风险约为白天的 3.6 倍</div></div>
+    <div class="row"><div class="k">救援黄金时间</div><div class="v">急性心血管事件「黄金四分钟」错过，致死率从 17% 飙升至 73%</div></div>
+    <div class="row"><div class="k">求救按钮闲置率</div><div class="v">传统挂脖式求救按钮的实际佩戴率仅 <strong>百分之二十二</strong>——「不想被当成病人」</div></div>
+  </div>
+  <div class="src">数据来源 · 世卫组织《老年跌倒预防 2024》／中国疾控中心《老年人伤害防治报告 2024》／中华心血管病杂志 2024 ／坐享其美田野调查档案 2025-2026</div>
+</template>
+
+<template id="m-explod">
+  <div class="m-eye">大爆炸图 · 五层结构 材质详情</div>
+  <h3>每一层都<em>克制而必要</em></h3>
+  <p class="lead">坐享其美的硬件被严格控制在五层之内：每一层都承担一个不可替代的功能，每一层都可独立维护与回收。这是工业设计里最朴素的诚意——可拆解、可维修、可循环。整椅九成以上部件可独立拆解回收，柔性传感模组采用水基胶贴合，避免化学溶剂残留，让一把椅子的生命周期不止步于使用结束的那一刻。</p>
+  <div class="data-grid">
+    <div class="row"><div class="k">第一层 · 外饰面料</div><div class="v">新西兰美利奴七成 + 涤纶三成 · 抗污等级 4-5 级 · 拒水拒油 · 可整布拆卸机洗 · 阻燃达 GB 17927.1 标准</div></div>
+    <div class="row"><div class="k">第二层 · 压电传感层</div><div class="v">柔性压电薄膜 零点一八毫米 · <strong>十二行 × 二十四列 共 二百八十八 通道</strong> · 心率采样率 每秒二百次 / 呼吸频率精度 正负零点三次每分</div></div>
+    <div class="row"><div class="k">第三层 · 电控机构</div><div class="v">双线性静音推杆 <strong>二百 至 三百八十 牛</strong> · 边缘智能主板算力 每秒 四万亿次运算 · 数据本地推理 · 不出椅</div></div>
+    <div class="row"><div class="k">第四层 · 实木骨架</div><div class="v">高等级 北美黑胡桃 · 含水率 8-12% · 三槽对接燕尾榫 · 整椅承载 ≤ 一百八十 千克 · 经森林管理委员会可持续认证</div></div>
+    <div class="row"><div class="k">第五层 · 底座基板</div><div class="v">普碳钢配重 八点二 千克 · 静音聚氨酯万向脚轮 · 防倾倒倾角 ≥ 十五度 · 静摩擦系数 0.35</div></div>
+    <div class="row"><div class="k">可拆解回收率</div><div class="v">整椅 <strong>百分之九十二</strong> 部件可独立拆解回收 · 柔性传感模组采用水基胶贴合，无化学溶剂残留</div></div>
+    <div class="row"><div class="k">维修指数</div><div class="v">单点维修平均耗时 <strong>十八 分钟</strong> · 关键电控模块支持上门快修与免拆置换</div></div>
+    <div class="row"><div class="k">产品质保</div><div class="v">实木骨架 十年 · 电控机构 五年 · 织物面料 三年 · 全链路终身维护体系</div></div>
+  </div>
+  <div class="src">数据来源 · 坐享其美内部结构白皮书 v2.3 ／ 森林管理委员会可持续认证编号 SCS-COC-009432 ／ 国标 三三二六 适老坐具规范</div>
+</template>
+
+<script>
+'use strict';
+
+/* ════════════════════════════════════════════════════════════
+   1 · STAGE FIT  ·  1920×1080 等比缩放
+═══════════════════════════════════════════════════════════ */
+const STAGE = document.getElementById('stage');
+const VIEWPORT = document.querySelector('.viewport');
+STAGE.style.position='absolute'; STAGE.style.left='50%'; STAGE.style.top='50%';
+STAGE.style.marginLeft='-960px'; STAGE.style.marginTop='-540px';
+let stageScale = 1;
+function fitStage(){
+  const w = VIEWPORT.clientWidth, h = VIEWPORT.clientHeight;
+  stageScale = Math.min(w/1920, h/1080);
+  STAGE.style.transform = `scale(${stageScale})`;
+}
+fitStage();
+window.addEventListener('resize', fitStage);
+document.addEventListener('fullscreenchange', () => setTimeout(fitStage, 60));
+
+/* ════════════════════════════════════════════════════════════
+   2 · MEDIA HYDRATION  ·  并发队列 + 骨架屏
+═══════════════════════════════════════════════════════════ */
+const Q = []; let inFlight = 0; const MAX = 5;
+function drain(){
+  while(inFlight < MAX && Q.length){
+    const fn = Q.shift(); inFlight++;
+    fn().finally(()=>{ inFlight--; drain(); });
+  }
+}
+function enq(fn, hi=false){ if(hi) Q.unshift(fn); else Q.push(fn); drain(); }
+
+function loadImg(img, hi=false){
+  if(img.dataset.loaded) return;
+  img.dataset.loaded = 'pending';
+  const src = img.getAttribute('data-src');
+  enq(() => new Promise(res => {
+    const tmp = new Image(); tmp.decoding='async';
+    tmp.onload = () => {
+      img.src = src;
+      (img.decode ? img.decode().catch(()=>{}) : Promise.resolve())
+        .finally(()=>{ img.classList.add('loaded'); img.closest('.media')?.classList.add('loaded'); img.dataset.loaded='done'; res(); });
+    };
+    tmp.onerror = () => {
+      img.classList.add('loaded'); img.closest('.media')?.classList.add('loaded');
+      img.dataset.loaded='error'; res();
+    };
+    tmp.src = src;
+  }), hi);
+}
+function loadVid(v){
+  if(v.dataset.loaded) return;
+  v.dataset.loaded = 'pending';
+  v.src = v.getAttribute('data-src');
+  v.muted = true; v.loop = true; v.playsInline = true; v.preload='auto';
+  const ok = () => {
+    if(v.dataset.loaded === 'done') return;
+    v.classList.add('loaded');
+    v.closest('.media')?.classList.add('loaded');
+    v.dataset.loaded = 'done';
+  };
+  v.addEventListener('loadeddata', ok, {once:true});
+  v.addEventListener('canplay',   ok, {once:true});
+  try { v.load(); } catch(e){}
+}
+function loadIframe(f){
+  if(f.dataset.loaded) return;
+  f.dataset.loaded = 'pending';
+  f.src = f.getAttribute('data-src');
+  f.addEventListener('load', () => {
+    f.classList.add('loaded'); f.closest('.media')?.classList.add('loaded'); f.dataset.loaded='done';
+  }, {once:true});
+}
+function hydrate(root, opts={}){
+  const { images=true, videos=true, iframes=true, hi=false } = opts;
+  if(images)  root.querySelectorAll('img[data-src]').forEach(i => loadImg(i, hi));
+  if(videos)  root.querySelectorAll('video[data-src]').forEach(loadVid);
+  if(iframes) root.querySelectorAll('iframe[data-src]').forEach(loadIframe);
+}
+
+/* ════════════════════════════════════════════════════════════
+   3 · NAVIGATION
+═══════════════════════════════════════════════════════════ */
+const slides = Array.from(document.querySelectorAll('.slide'));
+const total  = slides.length;
+const fill   = document.getElementById('progFill');
+const curEl  = document.getElementById('curN');
+const totEl  = document.getElementById('totN');
+const prevBtn= document.getElementById('prevBtn');
+const nextBtn= document.getElementById('nextBtn');
+let cur = 0;
+let isAnimating = false;
+totEl.textContent = String(total).padStart(2,'0');
+
+function syncVideos(idx){
+  slides.forEach((s, i) => {
+    s.querySelectorAll('video').forEach(v => {
+      if(i === idx){ try { v.currentTime = 0; v.play().catch(()=>{}); } catch(e){} }
+      else         { try { v.pause(); } catch(e){} }
+    });
+  });
+}
+function setFullVid(active){
+  document.body.classList.toggle('fullvid', active);
+  const t0 = performance.now();
+  function tick(t){ fitStage(); if(t-t0 < 540) requestAnimationFrame(tick); }
+  requestAnimationFrame(tick);
+}
+function goTo(idx){
+  if(isAnimating) return;
+  idx = Math.max(0, Math.min(total-1, idx));
+  if(idx === cur) return;
+  isAnimating = true;
+  const next = slides[idx], prev = slides[cur];
+
+  // 真正的 crossfade：旧页保持可见 + 后退渐隐，新页前进渐入
+  prev.classList.remove('active');
+  prev.classList.add('leaving');
+  // 强制 reflow，确保浏览器接受新一帧
+  void next.offsetWidth;
+  next.classList.remove('leaving');
+  next.classList.add('active');
+  cur = idx;
+
+  // 转场结束后清理 leaving，避免堆积（与 CSS 的 0.55s opacity 同步）
+  setTimeout(() => { prev.classList.remove('leaving'); }, 600);
+
+  if(slides[cur]) hydrate(slides[cur], { hi: true });
+  [cur-1, cur+1].forEach(i => slides[i] && hydrate(slides[i], { hi:true }));
+  [cur-2, cur+2].forEach(i => slides[i] && hydrate(slides[i], { videos:false, iframes:false }));
+  syncVideos(cur);
+  setFullVid(next.hasAttribute('data-fullvid'));
+  curEl.textContent = String(cur+1).padStart(2,'0');
+  fill.style.width = ((cur+1) / total * 100) + '%';
+  prevBtn.disabled = (cur === 0);
+  nextBtn.disabled = (cur === total-1);
+  setTimeout(() => { isAnimating = false; }, 650);
+}
+prevBtn.addEventListener('click', () => goTo(cur-1));
+nextBtn.addEventListener('click', () => goTo(cur+1));
+document.addEventListener('keydown', e => {
+  if(document.body.classList.contains('editing')){
+    const t = e.target;
+    if(t && (t.isContentEditable || t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+  }
+  if(document.getElementById('modalBackdrop').classList.contains('open')){
+    if(e.key === 'Escape') closeModal();
+    return;
+  }
+  if(e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown'){ e.preventDefault(); goTo(cur+1); }
+  else if(e.key === 'ArrowLeft' || e.key === 'PageUp'){ e.preventDefault(); goTo(cur-1); }
+  else if(e.key === 'Home'){ e.preventDefault(); goTo(0); }
+  else if(e.key === 'End'){ e.preventDefault(); goTo(total-1); }
+  else if(e.key.toLowerCase() === 'f'){ e.preventDefault(); toggleFs(); }
+});
+let tx=0;
+document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, {passive:true});
+document.addEventListener('touchend',   e => {
+  if(document.body.classList.contains('editing')) return;
+  if(document.getElementById('modalBackdrop').classList.contains('open')) return;
+  const dx = e.changedTouches[0].clientX - tx;
+  if(Math.abs(dx) > 50) goTo(cur + (dx<0 ? 1 : -1));
+}, {passive:true});
+
+slides[0].classList.add('active');
+fill.style.width = (1/total*100) + '%';
+prevBtn.disabled = true;
+hydrate(slides[0], { hi:true });
+if(slides[1]) hydrate(slides[1], { hi:true });
+if(slides[2]) hydrate(slides[2], { videos:false, iframes:false, hi:true });
+syncVideos(0);
+setFullVid(slides[0].hasAttribute('data-fullvid'));
+
+window.addEventListener('load', () => setTimeout(() => {
+  const queue = slides.slice(3);
+  const idle = window.requestIdleCallback || (cb => setTimeout(()=>cb({timeRemaining:()=>50}), 200));
+  function tick(d){ while(queue.length && d.timeRemaining() > 12){ hydrate(queue.shift(), { videos:false, iframes:false }); } if(queue.length) idle(tick); }
+  idle(tick);
+}, 400));
+
+/* ════════════════════════════════════════════════════════════
+   4 · MODAL  ·  点击展开模态
+═══════════════════════════════════════════════════════════ */
+const backdrop = document.getElementById('modalBackdrop');
+const modalText = document.getElementById('modalText');
+const modalImg = document.getElementById('modalImg');
+const modalClose = document.getElementById('modalClose');
+
+function openModal(modalId, fromCard){
+  const tpl = document.getElementById(modalId);
+  if(!tpl) return;
+  modalText.innerHTML = tpl.innerHTML;
+  // 取首张图片作为预览
+  const card = fromCard || document.querySelector(`[data-modal="${modalId}"]`);
+  const img = card?.closest('.slide')?.querySelector('.media img');
+  modalImg.innerHTML = '';
+  if(img && img.src){
+    const big = document.createElement('img');
+    big.src = img.src;
+    big.alt = img.alt || '';
+    big.onload = () => big.classList.add('loaded');
+    if(big.complete) big.classList.add('loaded');
+    modalImg.appendChild(big);
+  }
+  // 点击卡片回弹反馈
+  if(card){
+    card.classList.remove('popping');
+    void card.offsetWidth;
+    card.classList.add('popping');
+    setTimeout(() => card.classList.remove('popping'), 460);
+  }
+  // 略延迟开启弹窗，让卡片反馈先发生
+  setTimeout(() => backdrop.classList.add('open'), 90);
+}
+function closeModal(){
+  backdrop.classList.remove('open');
+}
+document.querySelectorAll('[data-modal]').forEach(el => {
+  el.addEventListener('click', e => {
+    if(document.body.classList.contains('editing')) return;
+    if(e.target.closest('.media-tools')) return;
+    if(e.target.closest('.media-handles')) return;
+    openModal(el.dataset.modal, el);
+  });
+});
+backdrop.addEventListener('click', e => { if(e.target === backdrop) closeModal(); });
+modalClose.addEventListener('click', closeModal);
+
+/* ════════════════════════════════════════════════════════════
+   5 · MEDIA EDIT ENGINE
+     · 滚轮缩放 (transform: scale)
+     · 拖拽平移 (object-position %)
+     · 顶部 grip 手柄拖拽 → 整体移动容器 (translate)
+     · 四角 hd 手柄 → 调整容器宽高
+═══════════════════════════════════════════════════════════ */
+function injectMediaTools(){
+  document.querySelectorAll('.media').forEach(m => {
+    if(m.querySelector('.media-tools')) return;
+    if(!m.querySelector('img, video, iframe')) return;
+    const tools = document.createElement('div');
+    tools.className = 'media-tools';
+    tools.innerHTML = `
+      <button data-act="out" title="缩小">−</button>
+      <button data-act="in"  title="放大">+</button>
+      <button data-act="fit" title="填充/完整 切换">⇆</button>
+      <button data-act="reset" title="还原">↺</button>
+      <button data-act="replace" title="替换链接">⤴</button>`;
+    m.appendChild(tools);
+
+    const hint = document.createElement('div');
+    hint.className = 'media-hint';
+    hint.textContent = 'DRAG · SCROLL · 顶部 GRIP 移动';
+    m.appendChild(hint);
+
+    const badge = document.createElement('div');
+    badge.className = 'media-badge';
+    badge.textContent = '100% · 50,50';
+    m.appendChild(badge);
+
+    const handles = document.createElement('div');
+    handles.className = 'media-handles';
+    handles.innerHTML = `
+      <div class="grip" data-h="move" title="拖动整个容器"></div>
+      <div class="hd nw" data-h="nw"></div>
+      <div class="hd ne" data-h="ne"></div>
+      <div class="hd sw" data-h="sw"></div>
+      <div class="hd se" data-h="se"></div>`;
+    m.appendChild(handles);
+  });
+}
+injectMediaTools();
+
+function getTarget(m){ return m.querySelector('img, video'); }
+function updateBadge(m){
+  const t = getTarget(m); if(!t) return;
+  const b = m.querySelector('.media-badge'); if(!b) return;
+  const sc = parseFloat(getComputedStyle(t).getPropertyValue('--sc')) || 1;
+  const px = parseFloat(getComputedStyle(t).getPropertyValue('--px')) || 50;
+  const py = parseFloat(getComputedStyle(t).getPropertyValue('--py')) || 50;
+  b.textContent = `${Math.round(sc*100)}% · ${Math.round(px)},${Math.round(py)}`;
+}
+
+document.querySelectorAll('.media').forEach(m => {
+  const target = getTarget(m);
+  if(!target) return;
+
+  // 滚轮缩放
+  m.addEventListener('wheel', e => {
+    if(!document.body.classList.contains('editing')) return;
+    e.preventDefault();
+    const sc = parseFloat(getComputedStyle(target).getPropertyValue('--sc')) || 1;
+    const next = Math.max(0.3, Math.min(5, sc + (e.deltaY < 0 ? 0.08 : -0.08)));
+    target.style.setProperty('--sc', next);
+    updateBadge(m);
+  }, { passive: false });
+
+  // 拖拽逻辑
+  let mode = null; // 'pan' | 'move' | 'resize'
+  let sx=0, sy=0, sPx=50, sPy=50, sTx=0, sTy=0, sW=0, sH=0, hdir=null;
+
+  m.addEventListener('mousedown', e => {
+    if(!document.body.classList.contains('editing')) return;
+    if(e.target.closest('.media-tools')) return;
+    if(e.target.matches('[contenteditable="true"]')) return;
+
+    const h = e.target.closest('.hd, .grip');
+    if(h){
+      e.preventDefault(); e.stopPropagation();
+      sx = e.clientX; sy = e.clientY;
+      const r = m.getBoundingClientRect();
+      sW = r.width / stageScale;
+      sH = r.height / stageScale;
+      hdir = h.dataset.h;
+      if(hdir === 'move'){
+        mode = 'move';
+        m.classList.add('moving');
+        const tm = (m.style.transform || '').match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/);
+        sTx = tm ? parseFloat(tm[1]) : 0;
+        sTy = tm ? parseFloat(tm[2]) : 0;
+      } else {
+        mode = 'resize';
+        m.classList.add('dragging');
+      }
+      return;
+    }
+    e.preventDefault();
+    mode = 'pan';
+    m.classList.add('dragging');
+    sx = e.clientX; sy = e.clientY;
+    sPx = parseFloat(getComputedStyle(target).getPropertyValue('--px')) || 50;
+    sPy = parseFloat(getComputedStyle(target).getPropertyValue('--py')) || 50;
+  });
+
+  window.addEventListener('mousemove', e => {
+    if(!mode) return;
+    const dx = (e.clientX - sx) / stageScale;
+    const dy = (e.clientY - sy) / stageScale;
+    if(mode === 'pan'){
+      const r = m.getBoundingClientRect();
+      const cw = r.width / stageScale;
+      const ch = r.height / stageScale;
+      const dxPct = (dx / cw) * 100;
+      const dyPct = (dy / ch) * 100;
+      const nx = Math.max(0, Math.min(100, sPx - dxPct));
+      const ny = Math.max(0, Math.min(100, sPy - dyPct));
+      target.style.setProperty('--px', nx + '%');
+      target.style.setProperty('--py', ny + '%');
+      updateBadge(m);
+    } else if(mode === 'move'){
+      m.style.transform = `translate(${sTx + dx}px, ${sTy + dy}px)`;
+    } else if(mode === 'resize'){
+      let w = sW, h = sH;
+      if(hdir.includes('e')) w = Math.max(80, sW + dx);
+      if(hdir.includes('s')) h = Math.max(80, sH + dy);
+      if(hdir.includes('w')) w = Math.max(80, sW - dx);
+      if(hdir.includes('n')) h = Math.max(80, sH - dy);
+      m.style.width = w + 'px';
+      m.style.height = h + 'px';
+    }
+  });
+
+  window.addEventListener('mouseup', () => {
+    if(mode){
+      mode = null; hdir = null;
+      m.classList.remove('dragging', 'moving');
+    }
+  });
+
+  m.addEventListener('dblclick', e => {
+    if(!document.body.classList.contains('editing')) return;
+    if(e.target.closest('.media-tools, .media-handles')) return;
+    target.style.removeProperty('--px');
+    target.style.removeProperty('--py');
+    target.style.removeProperty('--sc');
+    updateBadge(m);
+  });
+
+  m.querySelector('.media-tools')?.addEventListener('click', e => {
+    const b = e.target.closest('button'); if(!b) return;
+    e.stopPropagation();
+    const act = b.dataset.act;
+    if(act === 'in' || act === 'out'){
+      const sc = parseFloat(getComputedStyle(target).getPropertyValue('--sc')) || 1;
+      const nx = Math.max(0.3, Math.min(5, sc + (act === 'in' ? 0.15 : -0.15)));
+      target.style.setProperty('--sc', nx);
+    } else if(act === 'reset'){
+      target.style.removeProperty('--px');
+      target.style.removeProperty('--py');
+      target.style.removeProperty('--sc');
+      m.style.removeProperty('width');
+      m.style.removeProperty('height');
+      m.style.removeProperty('transform');
+      m.classList.remove('contain');
+    } else if(act === 'fit'){
+      m.classList.toggle('contain');
+    } else if(act === 'replace'){
+      const cur = target.dataset.src || target.src || '';
+      const url = prompt('请输入新的媒体链接：', cur);
+      if(url && url.trim()){
+        target.dataset.src = url.trim();
+        target.classList.remove('loaded');
+        m.classList.remove('loaded');
+        target.removeAttribute('src');
+        delete target.dataset.loaded;
+        if(target.tagName === 'VIDEO') loadVid(target); else loadImg(target, true);
+      }
+    }
+    updateBadge(m);
+  });
+  updateBadge(m);
+});
+
+/* ════════════════════════════════════════════════════════════
+   6 · EDIT MODE TOGGLE
+═══════════════════════════════════════════════════════════ */
+const editBtn = document.getElementById('editBtn');
+const editLbl = document.getElementById('editLbl');
+const exportBtn = document.getElementById('exportBtn');
+function enableEditAll(active){
+  document.querySelectorAll('[data-edit]').forEach(el => {
+    el.setAttribute('contenteditable', active ? 'true' : 'false');
+    if(active) el.spellcheck = false;
+  });
+}
+const moveBtn = document.getElementById('moveBtn');
+const moveLbl = document.getElementById('moveLbl');
+editBtn.addEventListener('click', () => {
+  const active = document.body.classList.toggle('editing');
+  editBtn.classList.toggle('active', active);
+  editLbl.textContent = active ? '完成编辑' : '开启编辑';
+  enableEditAll(active);
+  // 显示 / 隐藏移动模式按钮
+  moveBtn.style.display = active ? 'inline-flex' : 'none';
+  if (!active) {
+    document.body.classList.remove('move-mode');
+    moveBtn.classList.remove('active');
+    moveLbl.textContent = '移动模式';
+  }
+});
+moveBtn.addEventListener('click', () => {
+  const on = document.body.classList.toggle('move-mode');
+  moveBtn.classList.toggle('active', on);
+  moveLbl.textContent = on ? '退出移动' : '移动模式';
+});
+
+/* ════════════════════════════════════════════════════════════
+   7 · FULLSCREEN
+═══════════════════════════════════════════════════════════ */
+const fsBtn = document.getElementById('fsBtn');
+const fsLbl = document.getElementById('fsLbl');
+const fsIcn = document.getElementById('fsIcn');
+function toggleFs(){
+  const el = document.documentElement;
+  if(!document.fullscreenElement){ (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el); }
+  else { (document.exitFullscreen || document.webkitExitFullscreen)?.call(document); }
+}
+fsBtn.addEventListener('click', toggleFs);
+document.addEventListener('fullscreenchange', () => {
+  const fs = !!document.fullscreenElement;
+  fsLbl.textContent = fs ? '退出' : '全屏';
+  fsIcn.innerHTML = fs
+    ? '<polyline points="20 14 14 14 14 20"/><polyline points="4 10 10 10 10 4"/><line x1="14" y1="14" x2="21" y2="21"/><line x1="3" y1="3" x2="10" y2="10"/>'
+    : '<polyline points="4 14 4 20 10 20"/><polyline points="20 10 20 4 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/>';
+});
+
+/* ════════════════════════════════════════════════════════════
+   8 · 通用容器拖拽（编辑态 ALT + 拖拽 → 移动任意容器）
+═══════════════════════════════════════════════════════════ */
+const DRAGGABLE_SEL = '.glass, .info, .text, .expand-card, .stamp, .data-card, .quote-card, .specs, .princ, .feat-grid, .data-panel, .meta-row, .footer-bar, .badge, .footnote, .vid-tag, .live-tag, .photo-label, .scene-label, .corner-tag, .micro-tag, .top-card, .header-glass, .note, .stats, .timeline, .num, .num-foot, .layer-tags .tag, .field, .vid-spec, .stage-bg, .video-stage, .device-frame, .vid-frame, .vid-side, .phone';
+function markDraggable() {
+  document.querySelectorAll(DRAGGABLE_SEL).forEach(el => {
+    if (el.closest('.media-handles') || el.closest('.media-tools')) return;
+    el.classList.add('block-draggable');
+  });
+}
+markDraggable();
+
+let altDown = false;
+let altDrag = null;
+document.addEventListener('keydown', e => {
+  if (e.key === 'Alt' && document.body.classList.contains('editing')) {
+    altDown = true;
+    document.body.classList.add('alt-pressed');
+  }
+});
+document.addEventListener('keyup', e => {
+  if (e.key === 'Alt') {
+    altDown = false;
+    document.body.classList.remove('alt-pressed');
+  }
+});
+document.addEventListener('mousedown', e => {
+  if (!document.body.classList.contains('editing')) return;
+  // 两种触发：1) 按住 Alt/Option  2) 开启了"移动模式"按钮
+  const moveMode = document.body.classList.contains('move-mode');
+  if (!e.altKey && !moveMode) return;
+  if (e.target.closest('.media-tools, .media-handles, .toolbar, .controller, #textTools, .modal-backdrop')) return;
+  // 找最近的 draggable 容器
+  let t = e.target;
+  while (t && t !== document.body) {
+    if (t.classList && t.classList.contains('block-draggable')) break;
+    t = t.parentElement;
+  }
+  if (!t || t === document.body) return;
+  e.preventDefault(); e.stopPropagation();
+  const m = (t.style.transform || '').match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)/);
+  altDrag = { el: t, sx: e.clientX, sy: e.clientY, sTx: m?parseFloat(m[1]):0, sTy: m?parseFloat(m[2]):0 };
+  t.classList.add('block-moving');
+}, true);
+window.addEventListener('mousemove', e => {
+  if (!altDrag) return;
+  const dx = (e.clientX - altDrag.sx) / stageScale;
+  const dy = (e.clientY - altDrag.sy) / stageScale;
+  altDrag.el.style.transform = `translate(${altDrag.sTx + dx}px, ${altDrag.sTy + dy}px)`;
+});
+window.addEventListener('mouseup', () => {
+  if (altDrag) { altDrag.el.classList.remove('block-moving'); altDrag = null; }
+});
+
+/* ════════════════════════════════════════════════════════════
+   9 · 文字样式浮动工具栏（字体 / 字号 / 加粗 / 斜体）
+═══════════════════════════════════════════════════════════ */
+const textTools = document.getElementById('textTools');
+const ttFont = document.getElementById('tt-font');
+const ttSize = document.getElementById('tt-size');
+const ttSm = document.getElementById('tt-sm');
+const ttLg = document.getElementById('tt-lg');
+const ttBold = document.getElementById('tt-bold');
+const ttItalic = document.getElementById('tt-italic');
+const ttReset = document.getElementById('tt-reset');
+let curTextEl = null;
+
+function positionToolbar(el) {
+  const r = el.getBoundingClientRect();
+  textTools.style.display = 'flex';
+  // 默认放上方，若空间不够则放下方
+  const tw = 380, th = 44;
+  let left = Math.max(10, Math.min(window.innerWidth - tw - 10, r.left));
+  let top = r.top - th - 12;
+  if (top < 10) top = r.bottom + 12;
+  textTools.style.left = left + 'px';
+  textTools.style.top = top + 'px';
+  const size = parseFloat(getComputedStyle(el).fontSize);
+  ttSize.value = Math.round(size);
+}
+document.addEventListener('focusin', e => {
+  if (!document.body.classList.contains('editing')) return;
+  if (!e.target.matches('[data-edit]')) return;
+  curTextEl = e.target;
+  positionToolbar(curTextEl);
+});
+document.addEventListener('focusout', e => {
+  setTimeout(() => {
+    if (!curTextEl) return;
+    const active = document.activeElement;
+    if (active === curTextEl || textTools.contains(active)) return;
+    textTools.style.display = 'none';
+    curTextEl = null;
+  }, 150);
+});
+ttFont.addEventListener('change', () => {
+  if (!curTextEl) return;
+  curTextEl.style.fontFamily = ttFont.value || '';
+  curTextEl.focus();
+});
+function applySize(delta) {
+  if (!curTextEl) return;
+  const s = parseFloat(getComputedStyle(curTextEl).fontSize);
+  const next = Math.max(8, Math.min(400, Math.round(s + delta)));
+  curTextEl.style.fontSize = next + 'px';
+  ttSize.value = next;
+  curTextEl.focus();
+}
+ttSm.addEventListener('click', e => { e.preventDefault(); applySize(-2); });
+ttLg.addEventListener('click', e => { e.preventDefault(); applySize(2); });
+ttSize.addEventListener('change', () => {
+  if (!curTextEl) return;
+  const v = parseInt(ttSize.value, 10);
+  if (!isNaN(v) && v > 0) {
+    curTextEl.style.fontSize = v + 'px';
+    curTextEl.focus();
+  }
+});
+ttBold.addEventListener('click', e => {
+  e.preventDefault();
+  if (!curTextEl) return;
+  const w = getComputedStyle(curTextEl).fontWeight;
+  curTextEl.style.fontWeight = (parseInt(w,10) >= 700) ? '500' : '800';
+  curTextEl.focus();
+});
+ttItalic.addEventListener('click', e => {
+  e.preventDefault();
+  if (!curTextEl) return;
+  const s = getComputedStyle(curTextEl).fontStyle;
+  curTextEl.style.fontStyle = (s === 'italic') ? 'normal' : 'italic';
+  curTextEl.focus();
+});
+ttReset.addEventListener('click', e => {
+  e.preventDefault();
+  if (!curTextEl) return;
+  curTextEl.style.removeProperty('font-family');
+  curTextEl.style.removeProperty('font-size');
+  curTextEl.style.removeProperty('font-weight');
+  curTextEl.style.removeProperty('font-style');
+  const s = parseFloat(getComputedStyle(curTextEl).fontSize);
+  ttSize.value = Math.round(s);
+  curTextEl.focus();
+});
+
+/* ════════════════════════════════════════════════════════════
+   10 · EXPORT
+═══════════════════════════════════════════════════════════ */
+exportBtn.addEventListener('click', () => {
+  if(document.body.classList.contains('editing')) editBtn.click();
+  const clone = document.documentElement.cloneNode(true);
+  clone.querySelectorAll('.slide.active').forEach(s => s.classList.remove('active'));
+  clone.querySelectorAll('.media.loaded').forEach(m => m.classList.remove('loaded'));
+  clone.querySelectorAll('img.loaded, video.loaded, iframe.loaded').forEach(m => m.classList.remove('loaded'));
+  clone.querySelectorAll('img[data-src]').forEach(i => { i.removeAttribute('src'); i.removeAttribute('data-loaded'); });
+  clone.querySelectorAll('video[data-src]').forEach(v => { v.removeAttribute('src'); v.removeAttribute('data-loaded'); });
+  clone.querySelectorAll('iframe[data-src]').forEach(f => { f.removeAttribute('src'); f.removeAttribute('data-loaded'); });
+  clone.querySelectorAll('.media-tools, .media-hint, .media-badge, .media-handles').forEach(el => el.remove());
+  clone.querySelectorAll('.media.dragging, .media.moving').forEach(el => el.classList.remove('dragging', 'moving'));
+  clone.querySelectorAll('.block-moving').forEach(el => el.classList.remove('block-moving'));
+  const cAlt = clone.querySelector('.alt-tip'); if (cAlt) cAlt.remove();
+  const cTT = clone.querySelector('#textTools'); if (cTT) cTT.remove();
+  const stg = clone.querySelector('#stage'); if(stg) stg.removeAttribute('style');
+  const pf = clone.querySelector('#progFill'); if(pf) pf.removeAttribute('style');
+  clone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
+  const bd = clone.querySelector('body'); if(bd) bd.classList.remove('editing', 'fullvid');
+  const first = clone.querySelector('.slide'); if(first) first.classList.add('active');
+  const el = clone.querySelector('#editBtn'); if(el) el.classList.remove('active');
+  const elL = clone.querySelector('#editLbl'); if(elL) elL.textContent = '开启编辑';
+  const html = '<!DOCTYPE html>\n' + clone.outerHTML;
+  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const ts = new Date().toISOString().slice(0,16).replace(/[-:T]/g,'');
+  a.href = url; a.download = `坐享其美_${ts}.html`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+});
+</script>
+
+
+</body></html>
