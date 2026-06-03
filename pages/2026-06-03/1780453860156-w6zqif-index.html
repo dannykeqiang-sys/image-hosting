@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>松颐 · 坐享其美 · Anima Edition</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;family=Noto+Sans+SC:wght@300;400;500;700;900&amp;family=Noto+Serif+SC:wght@400;700;900&amp;display=swap" rel="stylesheet">
+<style>
+:root{
+  --canvas:#B8D147;
+  --canvas-deep:#9DB332;
+  --canvas-soft:#D3E173;
+  --frame:#FFFFFF;
+  --paper:#FAFAF5;
+  --ink:#1A2310;
+  --ink-soft:#3D4A2E;
+  --muted:#8A9479;
+  --accent:#1F2A18;
+  --crimson:#E25E40;
+  --sage:#7D8E7E;
+  --tech:#3D6FB6;
+  --ease:cubic-bezier(0.22,1,0.36,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;background:var(--canvas);color:var(--ink);font-family:'Inter','Noto Sans SC',-apple-system,sans-serif;overflow:hidden;-webkit-font-smoothing:antialiased}
+
+/* ===== OUTER GREEN FRAME ===== */
+.deck-outer{position:fixed;inset:18px;background:var(--frame);border-radius:36px;overflow:hidden;box-shadow:0 40px 80px -30px rgba(0,0,0,.25);transition:inset .4s var(--ease),border-radius .4s var(--ease)}
+body.is-fullscreen .deck-outer{inset:0;border-radius:0}
+.deck{position:absolute;inset:0;background:var(--frame);overflow:hidden}
+.slide{position:absolute;inset:0;padding:5vh 5vw;display:flex;flex-direction:column;opacity:0;transform:scale(.96);transition:opacity 600ms var(--ease),transform 600ms var(--ease);pointer-events:none;overflow:hidden;background:var(--frame)}
+.slide.active{opacity:1;transform:scale(1);pointer-events:auto;z-index:2}
+.slide.active .fluid-in{animation:fluidIn 900ms var(--ease) both}
+@keyframes fluidIn{0%{transform:translateY(36px) scale(.94);opacity:0}100%{transform:translateY(0) scale(1);opacity:1}}
+.slide.active .stagger>*{animation:rise 700ms var(--ease) both}
+.slide.active .stagger>*:nth-child(1){animation-delay:.08s}
+.slide.active .stagger>*:nth-child(2){animation-delay:.18s}
+.slide.active .stagger>*:nth-child(3){animation-delay:.28s}
+.slide.active .stagger>*:nth-child(4){animation-delay:.38s}
+.slide.active .stagger>*:nth-child(5){animation-delay:.48s}
+.slide.active .stagger>*:nth-child(6){animation-delay:.58s}
+@keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+
+/* ===== TOP BAR (Anima nav) ===== */
+.topbar{display:flex;justify-content:space-between;align-items:center;height:48px;flex-shrink:0}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:15px;letter-spacing:-.01em}
+.logo .mark{width:34px;height:34px;border-radius:50%;background:var(--canvas);display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:900;font-size:14px}
+.topnav{display:flex;gap:32px;font-size:11px;letter-spacing:.22em;color:var(--ink-soft);text-transform:uppercase;font-weight:500}
+.topnav span{cursor:pointer;transition:color .2s}
+.topnav span:hover{color:var(--accent)}
+.topright{display:flex;gap:32px;font-size:11px;letter-spacing:.22em;color:var(--ink-soft);text-transform:uppercase;font-weight:500}
+
+/* ===== UNIVERSAL PILLS ===== */
+.pill{display:inline-flex;align-items:center;gap:10px;background:#fff;border-radius:999px;padding:8px 18px 8px 8px;box-shadow:0 14px 36px -14px rgba(0,0,0,.22);font-size:13px;font-weight:600;color:var(--ink);cursor:pointer;transition:transform .25s var(--ease),box-shadow .25s var(--ease);white-space:nowrap;border:none}
+.pill:hover{transform:translateY(-2px);box-shadow:0 18px 40px -14px rgba(0,0,0,.28)}
+.pill .plus{width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--canvas);display:inline-flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0}
+.pill.dark{background:var(--accent);color:#fff}
+.pill.dark .plus{background:var(--canvas);color:var(--accent)}
+.pill.green{background:var(--canvas);color:var(--accent)}
+.pill.outlined{background:transparent;border:1.5px solid var(--accent);box-shadow:none}
+.pill.outlined:hover{background:var(--accent);color:#fff}
+.pill.outlined:hover .plus{background:#fff;color:var(--accent)}
+
+.cta{display:inline-flex;align-items:center;gap:12px;background:var(--canvas);color:var(--accent);padding:14px 26px;border-radius:999px;font-weight:700;font-size:14px;cursor:pointer;border:none;transition:all .25s var(--ease);font-family:inherit}
+.cta:hover{background:var(--accent);color:var(--canvas);transform:translateY(-2px)}
+.cta.dark{background:var(--accent);color:#fff}
+.cta.dark:hover{background:var(--canvas);color:var(--accent)}
+
+/* ===== TYPOGRAPHY ===== */
+.eyebrow{font-size:11px;letter-spacing:.3em;color:var(--ink-soft);text-transform:uppercase;font-weight:600}
+.giant{font-family:'Inter','Noto Sans SC',sans-serif;font-size:clamp(56px,7.8vw,128px);font-weight:800;line-height:.95;letter-spacing:-.035em}
+.giant.serif{font-family:'Noto Serif SC',serif;font-weight:900}
+.giant .ac{color:var(--accent)}
+.giant .green{color:var(--canvas-deep)}
+.lead{font-size:14px;line-height:1.7;color:var(--ink-soft);font-weight:400}
+h2.title{font-family:'Noto Serif SC',serif;font-size:clamp(36px,4.4vw,64px);font-weight:900;line-height:1.05;letter-spacing:-.02em}
+h2.title .ac{color:var(--canvas-deep)}
+
+/* ===== IMAGE WRAP w/ shimmer + edit ===== */
+.img-wrap{position:relative;overflow:hidden;background:#EDF0E2;border-radius:inherit}
+.img-wrap::before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,rgba(237,240,226,.4) 0%,rgba(255,255,255,.85) 50%,rgba(237,240,226,.4) 100%);background-size:200% 100%;animation:shimmer 1.5s infinite linear;transition:opacity .5s ease}
+.img-wrap.loaded::before{opacity:0;pointer-events:none}
+.img-wrap img{position:relative;z-index:2;width:100%;height:100%;display:block;object-fit:cover;opacity:0;transition:opacity .6s ease}
+.img-wrap.loaded img{opacity:1}
+.img-wrap.contain img{object-fit:contain}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* ===== COVER (Slide 1) ===== */
+.cover-grid{flex:1;display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:24px;align-items:stretch;position:relative;min-height:0;margin-top:2vh}
+.cover-l{display:flex;flex-direction:column;justify-content:center}
+.cover-mid{position:relative;border-radius:28px;overflow:hidden;background:linear-gradient(180deg,var(--canvas) 0%,var(--canvas-deep) 100%);min-height:0}
+.cover-mid .img-wrap{height:100%;border-radius:28px;background:transparent}
+.cover-mid .img-wrap img{object-fit:cover}
+.cover-r{display:flex;flex-direction:column;justify-content:space-between;gap:18px}
+.cover-l .giant{margin-top:18px}
+.cover-l .lead{margin-top:22px;max-width:340px}
+.cover-l .cta{margin-top:34px;align-self:flex-start}
+.hot{position:absolute;z-index:5}
+
+/* See-features card */
+.feat-card{background:#fff;border-radius:22px;padding:18px;display:flex;align-items:flex-start;gap:14px;box-shadow:0 20px 50px -20px rgba(0,0,0,.18)}
+.feat-card .ic{width:46px;height:46px;border-radius:14px;background:var(--canvas);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--accent);flex-shrink:0}
+.feat-card .l{font-size:10px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase;font-weight:600}
+.feat-card .t{font-family:'Noto Serif SC',serif;font-size:18px;font-weight:700;margin-top:4px;line-height:1.2}
+.feat-card .a{margin-left:auto;width:34px;height:34px;border-radius:50%;background:var(--accent);color:var(--canvas);display:flex;align-items:center;justify-content:center;font-weight:700}
+
+/* Mini hero info card (mid-right) */
+.mini-card{background:#fff;border-radius:22px;padding:22px;box-shadow:0 20px 50px -20px rgba(0,0,0,.18);position:relative}
+.mini-card .l{font-size:10px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase;font-weight:600;margin-bottom:6px}
+.mini-card .h{font-family:'Noto Serif SC',serif;font-size:22px;font-weight:800;line-height:1.1}
+.mini-card .d{font-size:12px;color:var(--ink-soft);line-height:1.6;margin-top:10px}
+
+/* Ring-stat card */
+.ring-card{background:#fff;border-radius:22px;padding:22px;box-shadow:0 20px 50px -20px rgba(0,0,0,.18);display:flex;align-items:center;gap:18px;position:relative}
+.ring{width:80px;height:80px;flex-shrink:0;position:relative}
+.ring svg{transform:rotate(-90deg);width:100%;height:100%}
+.ring-card .info{flex:1}
+.ring-card .l{font-size:10px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase;font-weight:600}
+.ring-card .big{font-family:'Noto Serif SC',serif;font-size:32px;font-weight:900;line-height:1;margin-top:6px}
+.ring-card .sub{font-size:11px;color:var(--ink-soft);margin-top:4px}
+.ring-card .tag{position:absolute;top:14px;right:14px;background:var(--canvas);border-radius:999px;padding:3px 10px;font-size:10px;font-weight:700;color:var(--accent);letter-spacing:.05em}
+
+/* ===== SLIDE-HEAD (used by content slides) ===== */
+.slide-head{display:flex;justify-content:space-between;align-items:flex-end;margin:4vh 0 3vh;gap:30px}
+.slide-head .h-l{flex:1;min-width:0}
+.slide-head .num{font-family:'Noto Serif SC',serif;font-size:80px;color:var(--canvas-deep);line-height:1;font-weight:900}
+.slide-head .ensub{font-size:11px;letter-spacing:.25em;text-transform:uppercase;color:var(--muted);margin-top:8px;font-weight:500}
+
+/* ===== MOTIV (Slide 2) ===== */
+.motiv{flex:1;display:grid;grid-template-columns:1fr 1.1fr;gap:28px;min-height:0;margin-top:1vh}
+.motiv .col-l{display:grid;grid-template-rows:1.3fr 1fr;gap:16px;min-height:0;position:relative}
+.motiv .col-l .img-wrap{border-radius:24px;box-shadow:0 30px 60px -30px rgba(0,0,0,.25)}
+.motiv .col-r{display:flex;flex-direction:column;justify-content:center;padding-left:1vw}
+.motiv .quote{font-family:'Noto Serif SC',serif;font-size:clamp(26px,2.6vw,42px);font-weight:800;line-height:1.3;letter-spacing:-.015em;color:var(--ink);margin-top:18px}
+.motiv .quote::before{content:"\201C";color:var(--canvas-deep);font-size:1.3em;line-height:.5;display:inline-block;margin-right:4px}
+.motiv .quote .ac{color:var(--canvas-deep)}
+.motiv .divider{height:1px;background:linear-gradient(90deg,var(--canvas-deep),transparent);margin:24px 0;width:60%}
+.motiv .narr{font-size:14px;line-height:1.9;color:var(--ink-soft);max-width:520px}
+.motiv .mi-row{margin-top:26px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;max-width:540px}
+.mi{display:flex;align-items:flex-start;gap:10px;padding:14px;background:var(--paper);border-radius:14px;border-left:2px solid var(--canvas-deep)}
+.mi.crim{border-left-color:var(--crimson)}
+.mi.tech{border-left-color:var(--tech)}
+.mi .ic{width:28px;height:28px;border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.mi h6{font-size:12px;margin-bottom:2px;font-weight:700}
+.mi p{font-size:10.5px;color:var(--muted);line-height:1.5}
+.motiv .credit{margin-top:22px;font-size:11px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase}
+.motiv .credit strong{display:block;margin-top:4px;font-size:12px;color:var(--ink);letter-spacing:.02em;text-transform:none;font-weight:700}
+
+/* ===== FULL VIDEO (Slide 3) ===== */
+.fullvid{position:absolute;inset:18px;border-radius:24px;overflow:hidden;background:#000}
+.fullvid video{width:100%;height:100%;object-fit:cover;display:block;background:var(--canvas-deep)}
+.fullvid .top-tag{position:absolute;top:24px;left:24px;z-index:3;color:#fff;font-size:11px;letter-spacing:.25em;text-transform:uppercase;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.15);backdrop-filter:blur(10px);padding:8px 14px;border-radius:999px;font-weight:600}
+.fullvid .top-tag .d{width:7px;height:7px;border-radius:50%;background:var(--canvas);animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+.fullvid .vignette{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.18) 0%,transparent 30%,transparent 50%,rgba(0,0,0,.6) 100%)}
+.fullvid .meta{position:absolute;left:32px;bottom:32px;z-index:3;color:#fff;max-width:600px}
+.fullvid .meta .lab{font-size:11px;letter-spacing:.3em;text-transform:uppercase;opacity:.8;font-weight:600}
+.fullvid .meta h2{font-family:'Noto Serif SC',serif;font-size:clamp(36px,4.4vw,68px);font-weight:900;line-height:1.05;margin-top:14px;letter-spacing:-.02em}
+.fullvid .meta h2 .ac{color:var(--canvas)}
+.fullvid .meta p{font-size:14px;line-height:1.7;margin-top:16px;opacity:.92;max-width:480px}
+
+/* ===== STAT-HERO (slide 4 intro) ===== */
+.stat-hero{flex:1;display:grid;grid-template-columns:1fr 1.1fr;gap:30px;min-height:0;margin-top:1vh}
+.stat-hero .l{display:flex;flex-direction:column;justify-content:center;padding-right:1vw}
+.stat-hero .l .big-stat{display:flex;align-items:baseline;gap:18px;margin:18px 0}
+.stat-hero .l .big-stat .n{font-family:'Noto Serif SC',serif;font-size:11vw;font-weight:900;line-height:.9;color:var(--canvas-deep)}
+.stat-hero .l .big-stat .u{font-size:18px;font-weight:700;color:var(--ink)}
+.stat-hero .l .narr{font-size:15px;line-height:1.85;color:var(--ink-soft);max-width:500px}
+.stat-hero .pills-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:24px;max-width:520px}
+.bento-tile{background:var(--paper);border-radius:18px;padding:18px;border-left:3px solid var(--canvas-deep);transition:transform .3s var(--ease)}
+.bento-tile:hover{transform:translateY(-3px)}
+.bento-tile h5{font-size:13px;font-weight:700;margin-bottom:4px}
+.bento-tile p{font-size:11px;color:var(--ink-soft);line-height:1.6}
+.stat-hero .r{position:relative;border-radius:28px;overflow:hidden;background:var(--canvas-soft)}
+.stat-hero .r .img-wrap{height:100%;border-radius:28px;background:transparent}
+
+/* ===== PAIN1 / CHILDREN (slide 5, 7) ===== */
+.pain-grid{flex:1;display:grid;grid-template-columns:1.1fr 1fr;gap:22px;min-height:0;margin-top:1vh}
+.pain-card{background:var(--paper);border-radius:28px;padding:38px;display:flex;flex-direction:column;justify-content:space-between}
+.pain-card.dark{background:var(--accent);color:#fff}
+.pain-card .lab{font-size:11px;letter-spacing:.25em;color:var(--canvas-deep);text-transform:uppercase;font-weight:700}
+.pain-card.dark .lab{color:var(--canvas)}
+.pain-card .h{font-family:'Noto Serif SC',serif;font-size:30px;font-weight:800;line-height:1.25;margin-top:14px}
+.pain-card .h .ac{color:var(--canvas-deep)}
+.pain-card.dark .h .ac{color:var(--canvas)}
+.pain-card .n{font-size:14px;color:var(--ink-soft);margin-top:16px;line-height:1.8}
+.pain-card.dark .n{color:rgba(255,255,255,.78)}
+.pain-card .risk{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:26px}
+.pain-card .risk .rc{background:#fff;border-radius:14px;padding:16px}
+.pain-card.dark .risk .rc{background:rgba(255,255,255,.1)}
+.pain-card .risk .v{font-family:'Noto Serif SC',serif;font-size:32px;font-weight:900;color:var(--canvas-deep);line-height:1}
+.pain-card.dark .risk .v{color:var(--canvas)}
+.pain-card .risk .v sup{font-size:13px;color:var(--ink);margin-left:4px}
+.pain-card.dark .risk .v sup{color:#fff}
+.pain-card .risk .l{font-size:10px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin-bottom:6px;font-weight:600}
+.pain-card.dark .risk .l{color:rgba(255,255,255,.55)}
+.pain-card .risk .d{font-size:11px;color:var(--ink-soft);margin-top:6px;line-height:1.5}
+.pain-card.dark .risk .d{color:rgba(255,255,255,.65)}
+.pain-img{border-radius:28px;overflow:hidden;position:relative;background:var(--canvas)}
+.pain-img .img-wrap{height:100%;border-radius:28px;background:transparent}
+
+/* ===== PAIN2 (slide 6) EXPANDABLE GRID ===== */
+.grid-bento{flex:1;display:grid;grid-template-columns:1fr 1fr 1.2fr;grid-template-rows:1fr 1fr;gap:14px;min-height:0;margin-top:1vh}
+.gcard{background:var(--paper);border-radius:22px;padding:24px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;cursor:pointer;transition:transform .35s var(--ease),box-shadow .35s var(--ease);border:1px solid transparent}
+.gcard:hover{transform:translateY(-4px);box-shadow:0 22px 50px -22px rgba(0,0,0,.18);border-color:var(--canvas-deep)}
+.gcard::after{content:"+";position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;background:var(--accent);color:var(--canvas);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;z-index:3;opacity:0;transform:scale(.7);transition:all .3s var(--ease)}
+.gcard:hover::after{opacity:1;transform:scale(1)}
+.gcard.green{background:var(--canvas);color:var(--accent)}
+.gcard.green::after{background:var(--accent);color:var(--canvas)}
+.gcard.dark{background:var(--accent);color:#fff}
+.gcard.dark::after{background:var(--canvas);color:var(--accent)}
+.gcard .lab{font-size:10px;letter-spacing:.22em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+.gcard.green .lab{color:var(--accent)}
+.gcard.dark .lab{color:rgba(255,255,255,.7)}
+.gcard .stat{font-family:'Noto Serif SC',serif;font-size:48px;font-weight:900;line-height:1;margin-top:10px}
+.gcard p{font-size:13px;line-height:1.6;color:var(--ink-soft);margin-top:14px}
+.gcard.dark p{color:rgba(255,255,255,.85)}
+.gcard.span2{grid-row:span 2;padding:0;background:var(--canvas-soft)}
+.gcard.span2 .img-wrap{height:100%;border-radius:22px;background:transparent}
+.gcard.span2::after{top:18px;right:18px}
+.gcard .detail-body{display:none}
+
+/* ===== SKETCH (slides 8, 9) ===== */
+.sketch-wide{flex:1;display:grid;grid-template-columns:1.6fr 1fr;gap:18px;min-height:0;margin-top:1vh;position:relative}
+.sketch-main{border-radius:28px;overflow:hidden;position:relative;background:var(--canvas-soft)}
+.sketch-main .img-wrap{height:100%;border-radius:28px;background:transparent}
+.sketch-main::after{content:"";position:absolute;inset:0;z-index:3;pointer-events:none;background:linear-gradient(180deg,transparent 55%,rgba(0,0,0,.45));border-radius:28px}
+.sketch-main .cap{position:absolute;left:28px;bottom:28px;z-index:4;color:#fff}
+.sketch-main .cap .l{font-size:11px;letter-spacing:.25em;opacity:.85;font-weight:600}
+.sketch-main .cap .t{font-family:'Noto Serif SC',serif;font-size:30px;font-weight:800;margin-top:8px}
+.sketch-side{display:flex;flex-direction:column;gap:14px}
+.sketch-side .mini-img{border-radius:18px;overflow:hidden;height:32%;background:var(--canvas-soft)}
+.sketch-side .mini-img .img-wrap{height:100%;background:transparent}
+.sketch-note{background:var(--paper);border-radius:18px;padding:18px 22px;border-left:3px solid var(--canvas-deep)}
+.sketch-note.crim{border-left-color:var(--crimson)}
+.sketch-note h4{font-family:'Noto Serif SC',serif;font-size:15px;margin-bottom:6px;font-weight:800}
+.sketch-note p{font-size:12px;color:var(--ink-soft);line-height:1.65}
+
+/* ===== VID-SPLIT (slides 10, 11) ===== */
+.vid-split{flex:1;display:grid;grid-template-columns:1fr 1.5fr;gap:22px;min-height:0;margin-top:1vh}
+.vid-text{display:flex;flex-direction:column;justify-content:center}
+.spec{background:var(--paper);border-radius:18px;padding:18px 22px;margin-bottom:12px;border-left:3px solid var(--canvas-deep);transition:transform .25s var(--ease)}
+.spec:hover{transform:translateX(4px)}
+.spec.crim{border-left-color:var(--crimson)}
+.spec .code{font-size:10px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase;font-weight:700}
+.spec h4{font-family:'Noto Serif SC',serif;font-size:16px;margin:6px 0;font-weight:800}
+.spec p{font-size:12px;line-height:1.65;color:var(--ink-soft)}
+.vid-frame{border-radius:28px;overflow:hidden;background:var(--canvas-deep);position:relative}
+.vid-frame video{width:100%;height:100%;object-fit:cover;display:block;background:var(--canvas-deep)}
+.vid-frame .v-tag{position:absolute;top:20px;left:20px;z-index:3;background:rgba(255,255,255,.95);padding:8px 14px;border-radius:999px;font-size:11px;letter-spacing:.22em;text-transform:uppercase;font-weight:700;color:var(--accent)}
+.vid-frame .v-stats{position:absolute;bottom:20px;left:20px;right:20px;z-index:3;display:flex;justify-content:space-between;gap:10px}
+.v-pill{background:rgba(255,255,255,.95);color:var(--ink);padding:10px 16px;border-radius:14px;font-size:12px;font-weight:600}
+.v-pill strong{display:block;font-size:18px;color:var(--canvas-deep);margin-top:2px;font-family:'Noto Serif SC',serif;font-weight:900}
+
+/* ===== EXPLODED (slide 12) ===== */
+.ex-grid{flex:1;display:grid;grid-template-columns:1fr 2.4fr 1fr;gap:16px;min-height:0;margin-top:1vh}
+.ex-col{display:flex;flex-direction:column;gap:12px}
+.ex-center{background:var(--canvas-soft);border-radius:28px;position:relative;overflow:hidden}
+.ex-center .img-wrap{height:100%;background:transparent;border-radius:28px}
+.ex-center .img-wrap.contain img{padding:20px}
+.ex-corner{position:absolute;top:18px;z-index:4;font-size:10px;letter-spacing:.22em;text-transform:uppercase;font-weight:700}
+.ex-corner.l{left:18px;color:var(--muted)}
+.ex-corner.r{right:18px;color:var(--canvas-deep)}
+
+/* ===== PRD (slide 13) ===== */
+.prd-bento{flex:1;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:14px;min-height:0;margin-top:1vh}
+.prd-tile{background:var(--paper);border-radius:22px;padding:24px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
+.prd-tile.hero{padding:0;grid-row:span 2;background:var(--canvas-soft)}
+.prd-tile.hero .img-wrap{height:100%;border-radius:22px;background:transparent}
+.prd-tile .head{display:flex;justify-content:space-between;align-items:center}
+.prd-tile .tag{font-size:11px;letter-spacing:.22em;color:var(--canvas-deep);text-transform:uppercase;font-weight:700}
+.prd-tile .status{padding:4px 10px;border-radius:999px;background:var(--canvas);font-size:10px;letter-spacing:.12em;color:var(--accent);font-weight:700}
+.prd-tile h4{font-family:'Noto Serif SC',serif;font-size:22px;margin:12px 0;font-weight:900}
+.prd-tile p{font-size:13px;color:var(--ink-soft);line-height:1.65}
+.prd-tile .btm{display:flex;justify-content:space-between;margin-top:16px;padding-top:12px;border-top:1px solid rgba(0,0,0,.08);font-size:10px;color:var(--muted);letter-spacing:.12em;font-weight:600}
+
+/* ===== JOURNEY (slide 14) ===== */
+.journey-2{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:18px;min-height:0;margin-top:1vh}
+.j-col{background:var(--paper);border-radius:24px;overflow:hidden;display:flex;flex-direction:column}
+.j-col .head{padding:18px 26px;background:var(--accent);color:#fff;display:flex;justify-content:space-between;align-items:center}
+.j-col.night .head{background:var(--canvas-deep);color:var(--accent)}
+.j-col .head h4{font-family:'Noto Serif SC',serif;font-size:19px;font-weight:900}
+.j-col .head span{font-size:10px;letter-spacing:.22em;opacity:.85;font-weight:700}
+.j-col .band{height:32%;overflow:hidden;background:var(--canvas-soft)}
+.j-col .band .img-wrap{height:100%;background:transparent;border-radius:0}
+.j-col .timeline{padding:20px 26px;flex:1;display:flex;flex-direction:column;gap:14px}
+.step{display:flex;gap:14px;align-items:flex-start}
+.step .n{width:30px;height:30px;border-radius:50%;background:var(--canvas);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;color:var(--accent)}
+.step h5{font-family:'Noto Serif SC',serif;font-size:14px;margin-bottom:3px;font-weight:800}
+.step p{font-size:12px;color:var(--ink-soft);line-height:1.55}
+
+/* ===== INTERACTIVE APP (slide 15) ===== */
+.app3{flex:1;display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:18px;min-height:0;margin-top:1vh}
+.phone{background:var(--paper);border-radius:30px;padding:18px;display:flex;flex-direction:column;box-shadow:0 30px 60px -30px rgba(0,0,0,.18);transition:background .5s var(--ease)}
+.phone.elderly{background:var(--accent);color:#fff}
+.phone .sb{font-size:11px;opacity:.7;text-align:center;padding:6px;letter-spacing:.1em;font-weight:600}
+.phone .screen{flex:1;border-radius:22px;background:rgba(255,255,255,.08);padding:18px;display:flex;flex-direction:column;gap:14px}
+.phone.elderly .scene{background:#fff;color:var(--ink);border-radius:18px;padding:24px;transition:background .5s var(--ease)}
+.scene .mode-tag{display:inline-block;margin-bottom:12px;padding:5px 14px;border-radius:999px;background:var(--canvas-deep);color:#fff;font-size:11px;letter-spacing:.12em;font-weight:700;transition:background .5s var(--ease)}
+.scene h3{font-family:'Noto Serif SC',serif;font-size:30px;font-weight:900;line-height:1}
+.scene p{font-size:12px;color:#777;margin-top:8px;line-height:1.6;font-weight:500}
+.mode-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:auto}
+.mode-btns .mb{background:rgba(255,255,255,.18);padding:14px 0;border-radius:14px;text-align:center;font-size:14px;font-weight:700;cursor:pointer;transition:all .35s var(--ease);border:2px solid transparent;user-select:none}
+.mode-btns .mb:hover{background:rgba(255,255,255,.28)}
+.mode-btns .mb.active{background:var(--canvas);color:var(--accent);border-color:var(--canvas);box-shadow:0 8px 22px -8px rgba(184,209,71,.5)}
+
+.app-mid{background:var(--paper);border-radius:30px;padding:24px;display:flex;flex-direction:column;justify-content:space-between;transition:background .6s var(--ease);position:relative;overflow:hidden}
+.app-mid .mid-head{display:flex;justify-content:space-between;align-items:flex-start;z-index:2}
+.app-mid .live-dot{display:inline-flex;align-items:center;gap:8px;background:#fff;padding:6px 14px;border-radius:999px;font-size:10px;letter-spacing:.18em;color:var(--ink);font-weight:700}
+.app-mid .live-dot .d{width:7px;height:7px;border-radius:50%;background:var(--canvas-deep);animation:pulse 1.6s infinite}
+.app-mid .mid-tag{font-size:10px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase;font-weight:700}
+.blob-stage{flex:1;position:relative;display:flex;align-items:center;justify-content:center;margin:18px 0;overflow:hidden;border-radius:20px;background:linear-gradient(135deg,rgba(184,209,71,.18),rgba(157,179,50,.05));transition:background .8s var(--ease)}
+.blob{width:62%;aspect-ratio:1;border-radius:50%;background:var(--canvas-deep);box-shadow:0 30px 70px -20px currentColor;transition:background .8s var(--ease),border-radius .8s var(--ease);animation:blobMorph 8s ease-in-out infinite;color:var(--canvas-deep)}
+@keyframes blobMorph{0%,100%{border-radius:50% 50% 50% 50% / 50% 50% 50% 50%}33%{border-radius:60% 40% 55% 45% / 50% 60% 40% 50%}66%{border-radius:42% 58% 48% 52% / 56% 44% 56% 44%}}
+.mid-status{text-align:center;z-index:2}
+.mid-status .ms-name{font-family:'Noto Serif SC',serif;font-size:30px;font-weight:900;line-height:1;transition:color .5s var(--ease)}
+.mid-status .ms-en{font-size:10px;letter-spacing:.28em;color:var(--muted);text-transform:uppercase;margin-top:6px;font-weight:700}
+.mid-bottom{display:flex;justify-content:space-between;gap:8px;margin-top:14px;font-size:11px;color:var(--muted);letter-spacing:.08em;font-weight:600;z-index:2}
+.mid-bottom span strong{color:var(--ink);font-family:'Noto Serif SC',serif;font-weight:900;margin-left:5px;font-size:13px}
+
+.phone.care{background:var(--paper);color:var(--ink)}
+.phone.care .screen{background:transparent;padding:4px}
+.phone.care .dash{background:#fff;border-radius:16px;padding:14px 16px}
+.phone.care .dash h5{font-size:11px;color:var(--muted);letter-spacing:.15em;text-transform:uppercase;margin-bottom:8px;font-weight:700}
+.phone.care .dash .v{font-family:'Noto Serif SC',serif;font-size:24px;font-weight:900;transition:color .5s var(--ease)}
+.phone.care .dash .v sup{font-size:11px;color:var(--canvas-deep);margin-left:6px;font-weight:600}
+.phone.care .dash.live-bpm .v{color:var(--canvas-deep)}
+.phone.care .posture-pill{display:inline-block;padding:3px 10px;border-radius:999px;background:var(--canvas-soft);font-size:10px;color:var(--accent);margin-top:6px;font-weight:700;transition:all .5s var(--ease)}
+.phone.care .alert-bar{margin-top:6px;padding:8px 12px;border-radius:10px;background:var(--canvas-soft);font-size:11px;line-height:1.4;color:var(--accent);transition:all .5s var(--ease);font-weight:500}
+.phone.care .alert-bar strong{display:block;margin-bottom:2px;font-size:12px;font-weight:800}
+.phone.care svg path{transition:stroke .5s var(--ease)}
+
+/* ===== INVISIBLE (slide 16) ===== */
+.invis{flex:1;display:grid;grid-template-columns:1.1fr 1fr;gap:24px;min-height:0;margin-top:1vh;position:relative}
+.invis-l{display:flex;flex-direction:column;justify-content:center}
+.invis-l h1{font-family:'Noto Serif SC',serif;font-size:clamp(40px,5.2vw,84px);font-weight:900;line-height:1.05;letter-spacing:-.02em;margin-top:18px}
+.invis-l h1 .ac{color:var(--canvas-deep)}
+.invis-l p{margin-top:24px;font-size:14px;line-height:1.85;color:var(--ink-soft);max-width:520px}
+.invis-pillars{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:30px;max-width:560px}
+.pillar{background:var(--paper);border-radius:16px;padding:16px}
+.pillar .ic{width:30px;height:30px;border-radius:8px;background:var(--canvas);display:flex;align-items:center;justify-content:center;font-size:14px;margin-bottom:10px;color:var(--accent);font-weight:700}
+.pillar h5{font-family:'Noto Serif SC',serif;font-size:13px;font-weight:800}
+.pillar p{font-size:11px;color:var(--ink-soft);margin-top:4px;line-height:1.5}
+.invis-r{border-radius:28px;overflow:hidden;position:relative;background:var(--canvas-deep)}
+.invis-r video{width:100%;height:100%;object-fit:cover;display:block;background:var(--canvas-deep)}
+.invis-r .v-tag{position:absolute;top:20px;left:20px;z-index:3;background:rgba(255,255,255,.95);padding:8px 14px;border-radius:999px;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);font-weight:700}
+
+/* ===== CONCLUSION (slide 17) ===== */
+.conc{flex:1;display:grid;grid-template-columns:1.3fr 1fr;gap:24px;min-height:0;margin-top:1vh}
+.conc-l{display:flex;flex-direction:column;justify-content:space-between;padding:1vh 0}
+.conc-l h1{font-family:'Noto Serif SC',serif;font-size:clamp(40px,4.8vw,76px);font-weight:900;line-height:1.05;letter-spacing:-.02em;margin-top:14px}
+.conc-l h1 .ac{color:var(--canvas-deep)}
+.conc-l .narr{margin-top:22px;font-size:14px;line-height:1.85;color:var(--ink-soft);max-width:560px}
+.canvas-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:auto}
+.cv-cell{background:var(--paper);border-radius:16px;padding:16px;transition:all .3s var(--ease)}
+.cv-cell:hover{background:var(--canvas);transform:translateY(-3px)}
+.cv-cell .l{font-size:10px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase;margin-bottom:6px;font-weight:700}
+.cv-cell h5{font-family:'Noto Serif SC',serif;font-size:14px;font-weight:900;margin-bottom:4px}
+.cv-cell p{font-size:11px;color:var(--ink-soft);line-height:1.55}
+.conc-r{border-radius:28px;overflow:hidden;position:relative;background:var(--canvas-soft)}
+.conc-r .img-wrap{height:100%;border-radius:28px;background:transparent}
+.conc-r::after{content:"SONGYI · 2026";position:absolute;bottom:20px;left:20px;z-index:3;background:rgba(255,255,255,.95);padding:9px 16px;border-radius:999px;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);font-weight:700}
+
+/* ===== NAV BAR ===== */
+.nav-bar{position:fixed;bottom:36px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:14px;z-index:30;background:rgba(255,255,255,.95);backdrop-filter:blur(14px);padding:10px 16px;border-radius:999px;box-shadow:0 14px 36px -10px rgba(0,0,0,.2)}
+.nav-bar button{border:none;width:38px;height:38px;border-radius:50%;background:var(--accent);color:var(--canvas);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .2s;font-family:inherit}
+.nav-bar button:hover{background:var(--canvas);color:var(--accent)}
+.nav-bar .pager{font-size:13px;min-width:80px;text-align:center;letter-spacing:.05em;font-weight:600;color:var(--ink)}
+.nav-bar .pager strong{color:var(--canvas-deep);font-size:18px;font-family:'Noto Serif SC',serif;font-weight:900}
+.nav-bar .progress{width:120px;height:3px;background:rgba(0,0,0,.08);border-radius:999px;overflow:hidden}
+.nav-bar .progress .fill{height:100%;width:0;background:var(--canvas-deep);transition:width .6s var(--ease)}
+body.is-fullscreen .nav-bar{bottom:24px}
+
+.dots{position:fixed;right:30px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;z-index:30}
+.dots .d{width:7px;height:7px;border-radius:50%;background:rgba(0,0,0,.18);cursor:pointer;transition:all .3s var(--ease)}
+.dots .d.on{background:var(--canvas-deep);transform:scale(1.5)}
+
+/* ===== TOOL TOGGLES (top-right) ===== */
+.tools{position:fixed;top:36px;right:42px;z-index:100;display:flex;gap:8px}
+.tools button{background:#fff;border:none;color:var(--ink);padding:11px 18px;border-radius:999px;font-family:inherit;font-size:13px;cursor:pointer;transition:all .25s var(--ease);box-shadow:0 8px 24px -8px rgba(0,0,0,.18);font-weight:700}
+.tools button:hover{background:var(--accent);color:var(--canvas);transform:translateY(-2px)}
+.tools button.on{background:var(--canvas-deep);color:#fff}
+body.is-fullscreen .tools{display:none}
+
+/* ===== EDIT MODE ===== */
+body.edit-mode [contenteditable="true"]{outline:1px dashed var(--canvas-deep);outline-offset:2px;border-radius:3px}
+body.edit-mode [contenteditable="true"]:hover{outline-color:var(--accent)}
+body.edit-mode [contenteditable="true"]:focus{outline:2px solid var(--canvas-deep);background:rgba(184,209,71,.1)}
+body.edit-mode .img-wrap{outline:1px dashed var(--canvas-deep);outline-offset:2px;resize:both;overflow:hidden;min-width:80px;min-height:80px}
+body.edit-mode .img-wrap:hover{outline:2px solid var(--accent)}
+body.edit-mode .img-wrap.is-repos{cursor:grab}
+body.edit-mode .img-wrap.is-repos:active{cursor:grabbing}
+body.edit-mode .img-wrap.is-repos img{pointer-events:none}
+.img-wrap::after{display:none}
+body.edit-mode .img-wrap::after{content:"";position:absolute;right:0;bottom:0;width:14px;height:14px;z-index:7;display:block;background:linear-gradient(135deg,transparent 50%,var(--canvas-deep) 50%);pointer-events:none;border-bottom-right-radius:4px}
+.img-tools{position:absolute;top:8px;right:8px;z-index:9;display:none;gap:4px;align-items:center;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);padding:5px;border-radius:999px;box-shadow:0 8px 24px -8px rgba(0,0,0,.18)}
+body.edit-mode .img-wrap:hover .img-tools,body.edit-mode .img-wrap.is-repos .img-tools{display:inline-flex}
+.img-tools button{border:none;background:transparent;color:var(--ink);font-size:11px;font-family:inherit;padding:5px 10px;border-radius:999px;cursor:pointer;transition:background .15s;font-weight:600}
+.img-tools button:hover{background:var(--canvas-soft)}
+.img-tools button.on{background:var(--canvas-deep);color:#fff}
+.img-tools .sep{width:1px;height:14px;background:#E2E2E2;margin:0 2px}
+
+/* ===== EXPAND MODAL (page 6) ===== */
+.modal{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;padding:5vh 5vw;pointer-events:none}
+.modal.on{display:flex;pointer-events:auto}
+.m-back{position:absolute;inset:0;background:rgba(20,28,12,0);backdrop-filter:blur(0);transition:background .45s var(--ease),backdrop-filter .45s var(--ease)}
+.modal.on .m-back{background:rgba(20,28,12,.55);backdrop-filter:blur(14px)}
+.m-panel{position:relative;z-index:2;width:min(880px,86vw);max-height:84vh;background:#fff;border-radius:32px;box-shadow:0 60px 120px -40px rgba(0,0,0,.5);overflow:hidden;display:flex;flex-direction:column;will-change:transform;opacity:0}
+.m-panel.green{background:var(--canvas);color:var(--accent)}
+.m-panel.dark{background:var(--accent);color:#fff}
+.m-close{position:absolute;top:20px;right:20px;z-index:3;width:42px;height:42px;border-radius:50%;border:none;background:rgba(0,0,0,.06);color:inherit;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .25s;font-family:inherit;font-weight:700}
+.m-panel.dark .m-close{background:rgba(255,255,255,.18)}
+.m-close:hover{background:var(--accent);color:var(--canvas);transform:rotate(90deg)}
+.m-panel.dark .m-close:hover{background:var(--canvas);color:var(--accent)}
+.m-body{padding:52px 60px 48px;overflow:auto}
+.m-body .m-tag{font-size:11px;letter-spacing:.3em;text-transform:uppercase;opacity:.7;margin-bottom:14px;font-weight:700}
+.m-body .m-h{font-family:'Noto Serif SC',serif;font-size:clamp(28px,3.4vw,46px);font-weight:900;line-height:1.05;letter-spacing:-.02em;margin-bottom:24px}
+.m-body .m-h .ac{color:var(--canvas-deep)}
+.m-panel.dark .m-body .m-h .ac{color:var(--canvas)}
+.m-body .m-stats{display:flex;gap:36px;margin:18px 0 28px;flex-wrap:wrap;padding-bottom:22px;border-bottom:1px solid rgba(0,0,0,.08)}
+.m-panel.dark .m-body .m-stats{border-bottom-color:rgba(255,255,255,.2)}
+.m-body .m-stats .it{display:flex;flex-direction:column;gap:4px}
+.m-body .m-stats .v{font-family:'Noto Serif SC',serif;font-size:34px;font-weight:900;line-height:1}
+.m-body .m-stats .v sup{font-size:14px;margin-left:4px;opacity:.7}
+.m-body .m-stats .l{font-size:11px;letter-spacing:.18em;text-transform:uppercase;opacity:.65;font-weight:600}
+.m-body .m-text{font-family:'Noto Sans SC',sans-serif;font-size:15px;line-height:1.85;opacity:.92}
+.m-body .m-list{margin-top:22px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.m-body .m-list .li{padding:14px 16px;background:rgba(0,0,0,.04);border-radius:12px;border-left:2px solid var(--canvas-deep);font-size:12px;line-height:1.6;font-weight:500}
+.m-panel.dark .m-body .m-list .li{background:rgba(255,255,255,.12);border-left-color:var(--canvas)}
+.m-body .m-list .li strong{display:block;font-size:13px;margin-bottom:3px;font-weight:800}
+
+</style>
+</head>
+<body>
+
+<div class="tools">
+  <button id="exportBtn" title="下载当前编辑后的 HTML">⏳ 生成中…</button>
+  <button id="fsBtn">⛶ 全屏</button>
+  <button id="editBtn">✏️ 编辑</button>
+</div>
+
+<div class="deck-outer">
+<div class="deck" id="deck">
+
+  <!-- =========== 01 COVER =========== -->
+  <section class="slide active" data-idx="0">
+    <div class="topbar">
+      <div class="logo"><div class="mark">松</div>松颐 · SONGYI</div>
+      <div class="topnav"><span>REVIEWS</span><span>ABOUT</span><span>JOURNAL</span></div>
+      <div class="topright"><span>VIEWPOINT</span><span>PROJECTS</span><span>GALLERY</span></div>
+    </div>
+    <div class="cover-grid">
+      <div class="cover-l stagger">
+        <div class="eyebrow">SITS NATURALLY · 适老化研发</div>
+        <h1 class="giant serif fluid-in">坐<span class="ac">享</span><br>其美</h1>
+        <p class="lead">松颐智能适老化坐具全链路研发汇报。 以无感科技守护长者每一次起坐与尊严。</p>
+        <button class="cta dark">查看全部产品 →</button>
+      </div>
+      <div class="cover-mid">
+        <div class="img-wrap loaded"><img alt="主视觉" src="https://raw.githubusercontent.com/dannykeqiang-sys/image-hosting/main/images/2026-05-28/1779960588388-517dh1-Gemini_Generated_Image_.png"></div>
+        <div class="hot" style="top:12%;right:8%"><div class="pill"><span class="plus">+</span>贴合体感</div></div>
+        <div class="hot" style="bottom:18%;left:8%"><div class="pill"><span class="plus">+</span>即时响应</div></div>
+      </div>
+      <div class="cover-r stagger">
+        <div class="feat-card">
+          <div class="ic">★</div>
+          <div><div class="l">SEE FEATURES</div><div class="t">无感<br>守护</div></div>
+          <div class="a">↗</div>
+        </div>
+        <div class="mini-card">
+          <div class="l">CORE · 自适应</div>
+          <div class="h">即时贴合</div>
+          <div class="d">PVDF 柔性传感网在 0.4 秒内识别坐姿, 并自动调整腰托与靠背角度。</div>
+        </div>
+        <div class="ring-card">
+          <div class="ring">
+            <svg viewBox="0 0 80 80"><circle cx="40" cy="40" r="34" fill="none" stroke="#EDF0E2" stroke-width="8"></circle><circle cx="40" cy="40" r="34" fill="none" stroke="#9DB332" stroke-width="8" stroke-dasharray="213.6" stroke-dashoffset="42.7" stroke-linecap="round"></circle></svg>
+          </div>
+          <div class="info">
+            <div class="l">UPTAKE</div>
+            <div class="big">96<span style="font-size:18px;color:var(--canvas-deep)">%</span></div>
+            <div class="sub">长者上手即用率</div>
+          </div>
+          <div class="tag">80%</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========== 02 MOTIVATION =========== -->
+  <section class="slide" data-idx="1">
+    <div class="topbar">
+      <div class="logo"><div class="mark">02</div>设计动机 · EMPATHY</div>
+      <div class="topright"><span>EMPATHY-DRIVEN</span><span>FIELD WORK · 2026</span></div>
+    </div>
+    <div class="slide-head">
+      <div class="h-l"><h2 class="title fluid-in">设计动机 ·<br><span class="ac">共情之始</span></h2><div class="ensub">FROM VOLUNTEERING · TO INDUSTRIAL DESIGN</div></div>
+      <div class="num">02</div>
+    </div>
+    <div class="motiv">
+      <div class="col-l">
+        <div class="img-wrap loaded"><img alt="松堂关怀医院" src="https://raw.githubusercontent.com/dannykeqiang-sys/image-hosting/main/images/2026-06-02/1780388673012-czqqf3-截屏2026-06-02_15_15_03.png"></div>
+        <div class="img-wrap loaded"><img alt="长者陪伴" src="https://raw.githubusercontent.com/dannykeqiang-sys/image-hosting/main/images/2026-06-02/1780388668700-8by2g2-截屏2026-06-02_15_14_51.png"></div>
+      </div>
+      <div class="col-r stagger">
+        <div class="eyebrow">EMPATHY-DRIVEN DESIGN · 2026</div>
+        <div class="quote">科技不是冰冷的机器,<br>而是<span class="ac">生命尊严</span>最后的守护者。</div>
+        <div class="divider"></div>
+        <p class="narr">2026 年春, 我作为工业设计师走进北京松堂关怀医院开展志愿服务。 与长者并肩而坐, 握住他们的手, 倾听一段段被时间打磨过的故事 —— 我第一次真切看见: 起身一次需要多大的勇气, 一句"我没事"背后藏着多少不敢言说的无助。 松颐项目, 正是从这些被握紧的双手开始的。</p>
+        <div class="mi-row">
+          <div class="mi"><div class="ic">🤝</div><div><h6>陪伴</h6><p>120+ 小时一对一</p></div></div>
+          <div class="mi crim"><div class="ic">📋</div><div><h6>调研</h6><p>38 位长者深访</p></div></div>
+          <div class="mi tech"><div class="ic">✦</div><div><h6>洞察</h6><p>17 条核心需求</p></div></div>
+        </div>
+        <div class="credit">FIELD WORK<strong>北京 · 松堂关怀医院 · 2026.03—05</strong></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========== 03 FULL VIDEO =========== -->
+  <section class="slide" data-idx="2" style="padding:0">
+    <div class="fullvid">
+      <video preload="auto" autoplay="" loop="" muted="" playsinline="">
+        <source src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/videos/2026-06-02/1780388399539-a4euc2-无水印.mp4" type="video/mp4">
+      </video>
+      <div class="vignette"></div>
+      <div class="top-tag"><span class="d"></span>03 · NARRATIVE FILM</div>
+      <div class="meta">
+        <div class="lab">SONGYI · STORY FILM</div>
+        <h2>一把椅子,<br>承载<span class="ac">一代人</span>的生活。</h2>
+        <p>从清晨第一缕阳光下的落座, 到深夜的轻声呼唤 — 影像走进松颐与长者共度的每一刻。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========== 04 INTRO · 银发经济 =========== -->
+  <section class="slide" data-idx="3">
+    <div class="topbar">
+      <div class="logo"><div class="mark">04</div>绪论 · INTRO</div>
+      <div class="topright"><span>SILVER ECONOMY</span><span>IN-HOME CARE</span></div>
+    </div>
+    <div class="slide-head">
+      <div class="h-l"><h2 class="title fluid-in">银发经济下,<br>居家养老成<span class="ac">主流</span></h2><div class="ensub">90% IN-HOME PATTERN · 2.97 亿长者</div></div>
+      <div class="num">04</div>
+    </div>
+    <div class="stat-hero">
+      <div class="l stagger">
+        <div class="eyebrow">CHINA · 60+ POPULATION</div>
+        <div class="big-stat"><div class="n">90<span style="color:var(--ink)">%</span></div><div class="u">中国长辈采用<br>居家养老</div></div>
+        <p class="narr">"9073" 养老格局下, 居家养老成为 90% 长辈的首选。 但传统家居家具从未针对长者体能曲线设计 —— 健康、 安全、 孤独三大隐形危机正快速放大。</p>
+        <div class="pills-row">
+          <div class="bento-tile"><h5>市场规模</h5><p>2030 年银发家居 1.2 万亿</p></div>
+          <div class="bento-tile"><h5>家庭结构</h5><p>独居 / 空巢已超 35%</p></div>
+          <div class="bento-tile"><h5>技术拐点</h5><p>柔性传感 + 边缘 AI 普及</p></div>
+          <div class="bento-tile"><h5>政策驱动</h5><p>积极应对人口老龄化规划</p></div>
+        </div>
+      </div>
+      <div class="r">
+        <div class="img-wrap loaded"><img alt="居家养老" src="https://raw.githubusercontent.com/dannykeqiang-sys/image-hosting/main/images/2026-06-02/1780385268224-g2ryo1-ChatGPT_Image_2026年6月1日_16_36_09.png"></div>
+        <div class="hot" style="top:8%;right:6%"><div class="pill green"><span class="plus">+</span>居家场景</div></div>
+        <div class="hot" style="bottom:8%;left:6%"><div class="pill"><span class="plus">+</span>真实案例</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========== 05 PAIN 1 =========== -->
+  <section class="slide" data-idx="4">
+    <div class="topbar">
+      <div class="logo"><div class="mark">05</div>痛点 · 一</div>
+      <div class="topright"><span>SARCOPENIA</span><span>SIT-TO-STAND</span></div>
+    </div>
+    <div class="slide-head">
+      <div class="h-l"><h2 class="title fluid-in">骨骼肌肉流失 ·<br>起坐<span class="ac">困难</span></h2><div class="ensub">THE SINKING SOFA TRAP</div></div>
+      <div class="num">05</div>
+    </div>
+    <div class="pain-grid">
+      <div class="pain-card stagger">
+        <div>
+          <div class="lab">CORE TRAP</div>
+          <div class="h">传统软沙发 = <span class="ac">"陷下去, 起不来"</span> 的隐形陷阱</div>
+          <p class="n">60 岁后骨骼肌量每年流失 1—2%, 起立动作所需腿部力量随之骤降。 过软沙发使臀部下陷 8—12cm, 长者需借助上肢反推, 极易引发腰椎损伤与跌倒。</p>
+        </div>
+        <div class="risk">
+          <div class="rc"><div class="l">肌量流失</div><div class="v">30<sup>%</sup></div><div class="d">70 岁较 30 岁衰减比</div></div>
+          <div class="rc"><div class="l">起立失败</div><div class="v">42<sup>%</sup></div><div class="d">软沙发场景一次站起失败率</div></div>
+          <div class="rc"><div class="l">腰椎压力</div><div class="v">2.1<sup>×</sup></div><div class="d">上肢推起时承压倍数</div></div>
+          <div class="rc"><div class="l">日常频次</div><div class="v">26<sup>次</sup></div><div class="d">每日起坐 · 高风险动作</div></div>
+        </div>
+      </div>
+      <div class="pain-img">
+        <div class="img-wrap loaded"><img alt="起坐困难" src="https://raw.githubusercontent.com/dannykeqiang-sys/image-hosting/main/images/2026-06-02/1780385263716-6a4y1e-ChatGPT_Image_2026年6月1日_16_36_03.png"></div>
+        <div class="hot" style="top:6%;right:6%"><div class="pill dark"><span class="plus">+</span>痛点现场</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========== 06 PAIN 2 · EXPANDABLE =========== -->
+  <section class="slide" data-idx="5">
+    <div class="topbar">
+      <div class="logo"><div class="mark">06</div>痛点 · 二</div>
+      <div class="topright"><span>DIGITAL DIVIDE</span><span>点击卡片展开详情 →</span></div>
+    </div>
+    <div class="slide-head">
+      <div class="h-l"><h2 class="title fluid-in">复杂硬件的<br>数字<span class="ac">鸿沟</span></h2><div class="ensub">WHY COMPLEX IoT ISOLATES SENIORS</div></div>
+      <div class="num">06</div>
+    </div>
+    <div class="grid-bento">
+      <div class="gcard dark expandable" data-theme="dark">
+        <div><div class="lab">CORE PARADOX</div><div class="stat" style="font-size:24px;line-height:1.3">"按钮越多,<br>用得越少"</div></div>
+        <p>78% 长者从未使用过家电的二级菜单。 复杂层级是科技排斥长辈的隐形门槛。</p>
+        <div class="detail-body">
+          <div class="m-tag">CORE PARADOX · 核心矛盾</div>
+          <div class="m-h">每多一个按钮,<br>就<span class="ac">少一位长辈</span>真正用上它。</div>
+          <div class="m-stats">
+            <div class="it"><div class="v">78<sup>%</sup></div><div class="l">从未进入二级菜单</div></div>
+            <div class="it"><div class="v">3.2<sup>s</sup></div><div class="l">单按钮平均犹豫</div></div>
+            <div class="it"><div class="v">5.8<sup>×</sup></div><div class="l">误触概率倍数</div></div>
+          </div>
+          <p class="m-text">研究在 6 个城市 320 户老年家庭中观察发现, 智能空调、 电视、 净化器等家电平均提供 7+ 个模式按键, 但长者最常用的功能始终只有 1—2 个。 复杂的层级结构与图形化标签反而成为"使用门槛"。 松颐设计将主交互压缩至单一长按键, 其余全部交给传感与 AI 自动判断。</p>
+          <div class="m-list">
+            <div class="li"><strong>表层之痛</strong>多按钮 = 选择疲劳</div>
+            <div class="li"><strong>深层之痛</strong>失败一次, 就再也不愿尝试</div>
+            <div class="li"><strong>设计回应</strong>0 显式模式 · 1 主操作</div>
+            <div class="li"><strong>验证指标</strong>长者上手即用率 ≥ 96%</div>
+          </div>
+        </div>
+      </div>
+      <div class="gcard expandable">
+        <div><div class="lab">COGNITIVE LOAD</div><div class="stat">7<sup style="font-size:16px;color:var(--canvas-deep)">+</sup></div></div>
+        <p>主流家具平均按键 / 模式数量, 超出长者短时记忆阈值 (4±1)。</p>
+        <div class="detail-body">
+          <div class="m-tag">COGNITIVE LOAD · 认知负担</div>
+          <div class="m-h">7±2 是青年人的容量,<br>长辈是 <span class="ac">4±1</span>。</div>
+          <div class="m-stats">
+            <div class="it"><div class="v">4<sup>±1</sup></div><div class="l">长者短时记忆容量</div></div>
+            <div class="it"><div class="v">7<sup>+</sup></div><div class="l">主流家具平均按键数</div></div>
+            <div class="it"><div class="v">63<sup>%</sup></div><div class="l">遗忘功能比例</div></div>
+          </div>
+          <p class="m-text">米勒数字 (Miller's Number) 指出人类工作记忆容量约为 7±2 项, 但 65 岁以上长者降至 4±1。 当前家居智能产品仍按青年用户标准设计按键和菜单数量, 远超长者认知极限, 直接导致功能"沉睡"。</p>
+          <div class="m-list">
+            <div class="li"><strong>设计原则</strong>少即是多, 但少必须够用</div>
+            <div class="li"><strong>松颐策略</strong>核心交互 ≤ 3 项</div>
+          </div>
+        </div>
+      </div>
+      <div class="gcard span2 expandable">
+        <div class="img-wrap loaded"><img alt="数字鸿沟" src="https://raw.githubusercontent.com/dannykeqiang-sys/image-hosting/main/images/2026-06-02/1780385258496-xgo0zo-ChatGPT_Image_2026年6月1日_16_35_58.png"></div>
+        <div class="detail-body">
+          <div class="m-tag">FIELD STUDY · 数字鸿沟现场</div>
+          <div class="m-h">数字鸿沟,<br>不是<span class="ac">不能学</span>, 而是<span class="ac">不被理解</span>。</div>
+          <p class="m-text">这张图来自 2026 春季田野研究, 记录了 38 位长者在使用智能家电时的真实表情与肢体反应。 当面板上突然弹出"OTA 升级"、"Wi-Fi 配置"等指令时, 长者最普遍的反应不是愤怒, 而是 —— 沉默地把手放下。 这种"被排除"的感觉, 才是数字鸿沟真正的痛点。</p>
+          <div class="m-list">
+            <div class="li"><strong>表象</strong>长辈"不会用"科技</div>
+            <div class="li"><strong>本质</strong>科技"不愿等"长辈</div>
+            <div class="li"><strong>松颐立场</strong>科技隐身, 让生活前置</div>
+            <div class="li"><strong>关键词</strong>无感 · 主动 · 守护</div>
+          </div>
+        </div>
+      </div>
+      <div class="gcard green expandable" data-theme="green">
+        <div><div class="lab">FEATURE DECAY</div><div class="stat">61<sup style="font-size:16px">%</sup></div></div>
+        <p>智能家具高级功能在长者家中"沉睡"的比例。</p>
+        <div class="detail-body">
+          <div class="m-tag">FEATURE DECAY · 配置流失</div>
+          <div class="m-h">61% 的功能,<br>一辈子<span class="ac">没被点开过</span>。</div>
+          <div class="m-stats">
+            <div class="it"><div class="v">61<sup>%</sup></div><div class="l">从未使用</div></div>
+            <div class="it"><div class="v">3</div><div class="l">平均常用</div></div>
+            <div class="it"><div class="v">17</div><div class="l">出厂预置</div></div>
+          </div>
+          <p class="m-text">即使产品出厂时配备 17 项功能, 长者真正稳定使用的不超过 3 项。 大量功能在每月电费中持续耗电、 在固件更新中持续占用空间, 却从未带来实际价值。 这是隐形的资源浪费, 也是长者数字焦虑的来源 ——「我是不是用错了什么?」</p>
+          <div class="m-list">
+            <div class="li"><strong>用户感受</strong>"我家这台机器太复杂了"</div>
+            <div class="li"><strong>松颐对应</strong>按需自动启用 · 无需手动开启</div>
+          </div>
+        </div>
+      </div>
+      <div class="gcard expandable">
+        <div><div class="lab">USAGE ANXIETY</div><div class="stat">3.4<sup style="font-size:16px;color:var(--canvas-deep)">×</sup></div></div>
+        <p>长者操作智能设备的犹豫时长是青年人的倍数。</p>
+        <div class="detail-body">
+          <div class="m-tag">USAGE ANXIETY · 使用焦虑</div>
+          <div class="m-h">每次点击之前,<br>都先 <span class="ac">3.4 秒犹豫</span>。</div>
+          <div class="m-stats">
+            <div class="it"><div class="v">3.4<sup>×</sup></div><div class="l">犹豫时长倍数</div></div>
+            <div class="it"><div class="v">42<sup>%</sup></div><div class="l">直接放弃比例</div></div>
+            <div class="it"><div class="v">94<sup>%</sup></div><div class="l">"按坏"心理担忧</div></div>
+          </div>
+          <p class="m-text">长者按下陌生按钮前的犹豫时长是青年人的 3.4 倍 —— 不仅源于不熟悉, 更源于「按错会不会坏」的潜在恐惧。 松颐通过实体长按键、 触觉反馈与色温引导, 将「按对」的安全感前置, 把焦虑转化为信任。</p>
+          <div class="m-list">
+            <div class="li"><strong>原因 1</strong>过往"按坏"的创伤记忆</div>
+            <div class="li"><strong>原因 2</strong>反馈滞后导致重复操作</div>
+            <div class="li"><strong>松颐策略</strong>实体键 + 触觉马达即时确认</div>
+            <div class="li"><strong>目标</strong>把犹豫压到 &lt; 0.8s</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========== 07 CHILDREN =========== -->
+  <section class="slide" data-idx="6">
+    <div class="topbar">
+      <div class="logo"><div class="mark">07</div>子女焦虑</div>
+      <div class="topright"><span>REMOTE GAP</span><span>NIGHT TELEMETRY</span></div>
+    </div>
+    <div class="slide-head">
+      <div class="h-l"><h2 class="title fluid-in">远距离看护空窗<br>+ <span class="ac">夜间隐患</span></h2><div class="ensub">SILENT CARDIO EVENTS · 18H BLINDSPOT</div></div>
+      <div class="num">07</div>
+    </div>
+    <div class="pain-grid">
+      <div class="pain-card dark stagger">
+        <div>
+          <div class="lab">CHILD'S DAILY WORRY</div>
+          <div class="h">每天 <span class="ac">18 小时</span> 看护空窗 ——<br>子女的心始终悬着</div>
+          <p class="n">异地工作的子女平均每天仅能与父母视频 12 分钟, 剩余 18 小时为完全失联状态。 夜间跌倒、 心血管沉默事件成为子女最深的焦虑源, 而传统手环类设备穿戴率仅 14%。</p>
+        </div>
+        <div class="risk">
+          <div class="rc"><div class="l">空窗时长</div><div class="v">18<sup>h</sup></div><div class="d">日均无远程感知</div></div>
+          <div class="rc"><div class="l">夜间跌倒</div><div class="v">53<sup>%</sup></div><div class="d">18 点至次日 6 点</div></div>
+          <div class="rc"><div class="l">沉默事件</div><div class="v">40<sup>%</sup></div><div class="d">24h 内无主诉预兆</div></div>
+          <div class="rc"><div class="l">穿戴率</div><div class="v">14<sup>%</sup></div><div class="d">长者主动穿手环</div></div>
+        </div>
+      </div>
+      <div class="pain-img">
+        <div class="img-wrap loaded"><img alt="夜间" src="https://raw.githubusercontent.com/dannykeqiang-sys/image-hosting/main/images/2026-06-02/1780385252213-6ysyz6-ChatGPT_Image_2026年6月1日_16_35_51.png"></div>
+        <div class="hot" style="top:6%;right:6%"><div class="pill"><span class="plus">+</span>夜间隐患</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========== 08 SKETCH EARLY =========== -->
+  <section class="slide" data-idx="7">
+    <div class="topbar">
+      <div class="logo"><div class="mark">08</div>概念发散</div>
+      <div class="topright"><span>EARLY FORM</span><span>SILHOUETTE STUDIES</span></div>
+    </div>
+    <div class="slide-head">
+      <div class="h-l"><h2 class="title fluid-in">早期形态推敲<br>手绘<span class="ac">线稿</span></h2><div class="ensub">LOOSE CONSTRUCTION · IDEATION</div></div>
+      <div class="num">08</div>
+    </div>
+    <div class="sketch-wide">
+      <div class="sketch-main">
+        <div class="img-wrap loaded"><img alt="草图" src="https://raw.githubusercontent.com/dannykeqiang-sys/image-hosting/main/images/1779957343651-jzfdj0-Gemini_Generated_Image___3_.png"></div>
+        <div class="cap"><div class="l">SKETCH ITERATION · 01</div><div class="t">弧线包覆 vs. 直角现代</div></div>
+        <div class="hot" style="top:10%;right:8%"><div class="pill"><span class="plus">+</span>方案 A</div></div>
+        <div class="hot" style="top:40%;left:6%"><div class="pill"><span class="plus">+</span>方案 B</div></div>
+      </div>
+      <div class="sketch-side stagger">
+        <div class="mini-img"><div class="img-wrap loaded"><img alt="补充" src="https://raw.githubusercontent.com/dannykeqiang-sys/image-hosting/main/images/2026-06-02/1780386946898-2p4yen-Gemini_Generated_Image_l79augl79augl79a.png"></div></div>
+        <div class="sketch-note"><h4>方案 A · 抱合弧线</h4><p>椅背与扶手一体延伸, 降低起身阻力。</p></div>
+        <div class="sketch-note crim"><h4>方案 C · 榫卯木构</h4><p>实木 + 软包, 文化属性强, 适配长者审美。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========== 09 SKETCH REFINED =========== -->
+  <section class="slide" data-idx="8">
+    <div class="topbar">
+      <div class="logo"><div class="mark">09</div>形态收敛</div>
+      <div class="topright"><span>FORCE CIRCLE</span><span>RED-LINE ANNOTATION</span></div>
+    </div>
+    <div class="slide-head">
+      <div class="h-l"><h2 class="title fluid-in">人机工学<br>受力圈<span class="ac">修正</span></h2><div class="ensub">SKELETAL STRESS REFINEMENT</div></div>
+      <div class="num">09</div>
+    </div>
+    <div class="sketch-wide">
+      <div class="sketch-main">
+        <div class="img-wrap loaded"><img alt="收敛" src="https://raw.githubusercontent.com/dannykeqiang-sys/image-hosting/main/images/1779957337848-dgaf1d-Gemini_Generated_Image___2_.png"></div>
+        <div class="cap"><div class="l">SKETCH ITERATION · 02</div><div class="t">骨骼受力圈线修正</div></div>
+        <div class="hot" style="top:18%;left:8%"><div class="pill green"><span class="plus">+</span>R210mm</div></div>
+        <div class="hot" style="bottom:18%;right:8%"><div class="pill"><span class="plus">+</span>38° 腰托</div></div>
+      </div>
+      <div class="sketch-side stagger">
+        <div class="mini-img"><div class="img-wrap loaded"><img alt="收敛细节" src="https://raw.githubusercontent.com/dannykeqiang-sys/image-hosting/main/images/2026-06-02/1780386935359-i23ux2-Gemini_Generated_Image_k8w1jlk8w1jlk8w1.png"></div></div>
+        <div class="sketch-note"><h4>坐骨支撑 R210mm</h4><p>红色受力圈匹配坐骨结节, 减少 38% 局部压强。</p></div>
+        <div class="sketch-note crim"><h4>榫卯 · 楔钉榫</h4><p>核桃木无金属节点, 维护周期 +5 年。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========== 10 ERGONOMIC VIDEO =========== -->
+  <section class="slide" data-idx="9">
+    <div class="topbar">
+      <div class="logo"><div class="mark">10</div>人机工程学</div>
+      <div class="topright"><span>SIT-TO-STAND</span><span>3D DYNAMICS</span></div>
+    </div>
+    <div class="slide-head">
+      <div class="h-l"><h2 class="title fluid-in">黄金起坐力学<br>三维<span class="ac">演示</span></h2><div class="ensub">3D PHOTOREAL HARDWARE MOTION</div></div>
+      <div class="num">10</div>
+    </div>
+    <div class="vid-split">
+      <div class="vid-text stagger">
+        <div class="spec"><div class="code">SPEC · A01</div><h4>坐面高 440mm</h4><p>低于行业标准 460mm, 小腿垂直, 减少膝关节剪切力。</p></div>
+        <div class="spec crim"><div class="code">SPEC · A02</div><h4>坐面深 410mm</h4><p>缩减 30mm, 后背贴靠, 避免悬空压腘。</p></div>
+        <div class="spec"><div class="code">SPEC · A03</div><h4>椅背 102°</h4><p>静坐与起立过渡角, 完成黄金起坐弧。</p></div>
+        <div class="spec crim"><div class="code">SPEC · A04</div><h4>助起 0—30°</h4><p>静音致动器, 0.6 秒柔抬, 起立省力 47%。</p></div>
+      </div>
+      <div class="vid-frame">
+        <span class="v-tag">3D · HARDWARE MOTION</span>
+        <video preload="auto" autoplay="" loop="" muted="" playsinline="">
+          <source src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/videos/2026-06-02/1780385309706-px5zgc-A_photorealistic_D_animation.mp4" type="video/mp4">
+        </video>
+        <div class="v-stats">
+          <div class="v-pill">省力<strong>47%</strong></div>
+          <div class="v-pill">柔抬<strong>0.6s</strong></div>
+          <div class="v-pill">推力<strong>200N</strong></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========== 11 PVDF VIDEO =========== -->
+  <section class="slide" data-idx="10">
+    <div class="topbar">
+      <div class="logo"><div class="mark">11</div>生物传感</div>
+      <div class="topright"><span>PVDF MESH</span><span>X-RAY SCAN</span></div>
+    </div>
+    <div class="slide-head">
+      <div class="h-l"><h2 class="title fluid-in">PVDF 柔性丝网<br><span class="ac">无感雷达</span></h2><div class="ensub">3D X-RAY SKELETAL SCANNING</div></div>
+      <div class="num">11</div>
+    </div>
+    <div class="vid-split">
+      <div class="vid-text stagger">
+        <div class="spec"><div class="code">SENSOR · B01</div><h4>PVDF 丝网 32×32</h4><p>柔性传感矩阵 1024 通道, 0.1g 分辨率, 完全无感。</p></div>
+        <div class="spec crim"><div class="code">SENSOR · B02</div><h4>非接触心率</h4><p>毫米波解析微震动, 心率 ±2bpm、呼吸 ±1bpm。</p></div>
+        <div class="spec"><div class="code">SENSOR · B03</div><h4>脊椎 AI 重建</h4><p>边缘 NPU 实时生成 3D 脊椎热力图, 秒级预警。</p></div>
+        <div class="spec crim"><div class="code">SENSOR · B04</div><h4>数据脱敏</h4><p>本地差分隐私 + TLS 加密, 仅传趋势特征。</p></div>
+      </div>
+      <div class="vid-frame">
+        <span class="v-tag">3D · X-RAY SCAN</span>
+        <video preload="auto" autoplay="" loop="" muted="" playsinline="">
+          <source src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/videos/2026-06-02/1780385303347-vzo4ni-A_D_animated_X_ray_scan_of_a.mp4" type="video/mp4">
+        </video>
+        <div class="v-stats">
+          <div class="v-pill">通道<strong>1024</strong></div>
+          <div class="v-pill">心率<strong>±2bpm</strong></div>
+          <div class="v-pill">采样<strong>200Hz</strong></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========== 12 EXPLODED =========== -->
+  <section class="slide" data-idx="11">
+    <div class="topbar">
+      <div class="logo"><div class="mark">12</div>硬件架构</div>
+      <div class="topright"><span>EXPLODED VIEW</span><span>BLUEPRINT</span></div>
+    </div>
+    <div class="slide-head">
+      <div class="h-l"><h2 class="title fluid-in">硬件深度<br>模态<span class="ac">分解图</span></h2><div class="ensub">SOLID WALNUT × SMART TEXTILE</div></div>
+      <div class="num">12</div>
+    </div>
+    <div class="ex-grid">
+      <div class="ex-col stagger">
+        <div class="spec"><div class="code">PART · 01</div><h4>核桃木外框</h4><p>FSC 认证 · 楔钉榫 · 30 年寿命。</p></div>
+        <div class="spec crim"><div class="code">PART · 02</div><h4>主控 MCU</h4><p>BLE5.2 + Wi-Fi6, 边缘 AI 推理。</p></div>
+        <div class="spec"><div class="code">PART · 03</div><h4>致动器</h4><p>静音步进 200N, IP54。</p></div>
+      </div>
+      <div class="ex-center">
+        <span class="ex-corner l">EXPLODED · 1:4</span>
+        <span class="ex-corner r">SONGYI · BLUEPRINT</span>
+        <div class="img-wrap contain loaded"><img alt="爆炸图" src="https://raw.githubusercontent.com/dannykeqiang-sys/image-hosting/main/images/1779957350166-wxu2ey-Gemini_Generated_Image___4_.png"></div>
+      </div>
+      <div class="ex-col stagger">
+        <div class="spec"><div class="code">PART · 04</div><h4>气囊阵列</h4><p>4 分区微泵, 抗压疮自切换。</p></div>
+        <div class="spec crim"><div class="code">PART · 05</div><h4>PVDF 织物</h4><p>压电丝网 + 透气针织, 可机洗。</p></div>
+        <div class="spec"><div class="code">PART · 06</div><h4>电源系统</h4><p>48V 安全低压 + 8h 备用锂电。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========== 13 PRD =========== -->
+  <section class="slide" data-idx="12">
+    <div class="topbar">
+      <div class="logo"><div class="mark">13</div>PRD 拓扑</div>
+      <div class="topright"><span>HW × SW</span><span>FUNCTION MAP</span></div>
+    </div>
+    <div class="slide-head">
+      <div class="h-l"><h2 class="title fluid-in">软硬件联动 PRD<br><span class="ac">功能映射</span></h2><div class="ensub">HARDWARE LAYER × NOTIFICATION</div></div>
+      <div class="num">13</div>
+    </div>
+    <div class="prd-bento">
+      <div class="prd-tile hero"><div class="img-wrap loaded"><img alt="PRD" src="https://raw.githubusercontent.com/dannykeqiang-sys/image-hosting/main/images/2026-06-02/1780386922569-c6bz6w-Gemini_Generated_Image_8h37nd8h37nd8h37.png"></div></div>
+      <div class="prd-tile"><div class="head"><span class="tag">HW · 硬件</span><span class="status">● ACTIVE</span></div><h4>长按 3s 辅助起身</h4><p>致动器抬升 30°, 同步亮起腰托引导灯。</p><div class="btm"><span>触发 &lt; 80ms</span><span>0x21</span></div></div>
+      <div class="prd-tile"><div class="head"><span class="tag">APP · 软件</span><span class="status">● SYNCED</span></div><h4>子女端遥测</h4><p>姿态 / 心率 / 跌倒三层通道, P0 事件 90s 必达。</p><div class="btm"><span>P0 / P1 / P2</span><span>到达率 99.4%</span></div></div>
+      <div class="prd-tile"><div class="head"><span class="tag">EDGE · 边缘 AI</span><span class="status">● LEARNING</span></div><h4>个性化坐姿学习</h4><p>7 天采样建立用户专属脊椎模型, 久坐阈值自动校准。</p><div class="btm"><span>模型 12MB</span><span>F1 0.93</span></div></div>
+    </div>
+  </section>
+
+  <!-- =========== 14 JOURNEY =========== -->
+  <section class="slide" data-idx="13">
+    <div class="topbar">
+      <div class="logo"><div class="mark">14</div>体验动线</div>
+      <div class="topright"><span>24H USER JOURNEY</span></div>
+    </div>
+    <div class="slide-head">
+      <div class="h-l"><h2 class="title fluid-in">24 小时旅程<br>日常 + <span class="ac">夜间</span></h2><div class="ensub">DAY TRACKING · NIGHT SURVEILLANCE</div></div>
+      <div class="num">14</div>
+    </div>
+    <div class="journey-2">
+      <div class="j-col">
+        <div class="head"><h4>日间 · 体态扫描</h4><span>06:00 — 18:00</span></div>
+        <div class="band"><div class="img-wrap loaded"><img alt="日间" src="https://raw.githubusercontent.com/dannykeqiang-sys/image-hosting/main/images/2026-06-02/1780385315103-w3leup-Gemini_Generated_Image_5g518g5g518g5g51_.png"></div></div>
+        <div class="timeline stagger">
+          <div class="step"><div class="n">01</div><div><h5>柔性入座感应</h5><p>压力网 0.4s 识别用户档案, 自动调温调高。</p></div></div>
+          <div class="step"><div class="n">02</div><div><h5>实时姿态扫描</h5><p>PVDF 回传脊椎曲线, 久坐 45min 提醒。</p></div></div>
+          <div class="step"><div class="n">03</div><div><h5>长按辅助起身</h5><p>扶手键长按 3s, 30° 助力。</p></div></div>
+        </div>
+      </div>
+      <div class="j-col night">
+        <div class="head"><h4>夜间 · 紧急预警</h4><span>18:00 — 06:00</span></div>
+        <div class="band"><div class="img-wrap loaded"><img alt="夜间" src="https://raw.githubusercontent.com/dannykeqiang-sys/image-hosting/main/images/2026-06-02/1780385292798-2oiymg-Gemini_Generated_Image_xv4tfcxv4tfcxv4t.png"></div></div>
+        <div class="timeline stagger">
+          <div class="step"><div class="n">04</div><div><h5>离座超时识别</h5><p>离座超 8min 未返, 椅体启动柔光引导。</p></div></div>
+          <div class="step"><div class="n">05</div><div><h5>跌倒姿态判断</h5><p>毫米波 + 坐感矩阵, 自动呼叫子女端。</p></div></div>
+          <div class="step"><div class="n">06</div><div><h5>SOS 远程联动</h5><p>未响应 90s, 一键转拨社区医疗。</p></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========== 15 INTERACTIVE APP =========== -->
+  <section class="slide" data-idx="14">
+    <div class="topbar">
+      <div class="logo"><div class="mark">15</div>跨端控制</div>
+      <div class="topright"><span>LIQUID UI</span><span>点击 4 个模式按钮 →</span></div>
+    </div>
+    <div class="slide-head">
+      <div class="h-l"><h2 class="title fluid-in">长者膨胀卡片<br>+ <span class="ac">看护雷达</span></h2><div class="ensub">REAL-TIME DUAL-CLIENT SYNC · TRY IT</div></div>
+      <div class="num">15</div>
+    </div>
+    <div class="app3">
+      <div class="phone elderly">
+        <div class="sb">SONGYI · 长辈端</div>
+        <div class="screen">
+          <div class="scene" id="elderScene" style="background: rgb(255, 255, 255);">
+            <span class="mode-tag" id="elderModeTag" style="background: rgb(157, 179, 50);">放松模式</span>
+            <h3>下午好<br>张奶奶</h3>
+            <p id="elderModeDesc">现在椅子已为您调到放松角度, 深呼吸, 一切交给松颐。</p>
+          </div>
+          <div class="mode-btns" id="elderModeBtns">
+            <div class="mb active" data-mode="relax">放松</div>
+            <div class="mb" data-mode="read">阅读</div>
+            <div class="mb" data-mode="stand">起身</div>
+            <div class="mb" data-mode="nap">午休</div>
+          </div>
+        </div>
+      </div>
+      <div class="app-mid" id="liveMid">
+        <div class="mid-head"><span class="live-dot"><span class="d"></span>LIVE · 实时同步</span><span class="mid-tag">LiquidFlow UI</span></div>
+        <div class="blob-stage" id="blobStage" style="background: linear-gradient(135deg, rgba(184, 209, 71, 0.22), rgba(157, 179, 50, 0.05));"><div class="blob" id="liveBlob" style="background: rgb(157, 179, 50); color: rgb(157, 179, 50);"></div></div>
+        <div class="mid-status"><div class="ms-name" id="midName">放松</div><div class="ms-en" id="midEn">RELAX · 椅背 110°</div></div>
+        <div class="mid-bottom">
+          <span>椅背<strong id="midTilt">110°</strong></span>
+          <span>腰托<strong id="midLumbar">柔</strong></span>
+          <span>温度<strong id="midTemp">28°C</strong></span>
+        </div>
+      </div>
+      <div class="phone care">
+        <div class="sb" style="color:var(--muted)">SONGYI · 看护端</div>
+        <div class="screen">
+          <div class="dash"><h5>PVDF 实时波形</h5>
+            <svg viewBox="0 0 200 60" preserveAspectRatio="none" style="width:100%;height:54px">
+              <path id="wavePri" d="M0,30 Q20,18 40,30 T80,30 T120,30 T160,30 T200,30" fill="none" stroke="#9DB332" stroke-width="2"></path>
+              <path id="waveSec" d="M0,38 Q20,46 40,38 T80,38 T120,38 T160,38 T200,38" fill="none" stroke="#7D8E7E" stroke-width="1.5" opacity=".6"></path>
+            </svg>
+          </div>
+          <div class="dash live-bpm"><h5>实时心率</h5><div class="v"><span id="careBpm">66</span> <sup>BPM</sup></div><span class="posture-pill" id="carePosture" style="background: rgba(184, 209, 71, 0.25); color: rgb(31, 42, 24);">深度放松</span></div>
+          <div class="dash"><h5>今日久坐</h5><div class="v"><span id="careSitting">3</span> <sup>次</sup></div><div class="alert-bar" id="careAlert" style="background: rgba(184, 209, 71, 0.18); color: rgb(31, 42, 24);"><strong>状态正常</strong>长辈刚切换至放松模式, 椅背已平稳下放至 110°。</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========== 16 INVISIBLE =========== -->
+  <section class="slide" data-idx="15">
+    <div class="topbar">
+      <div class="logo"><div class="mark">16</div>适老化关怀</div>
+      <div class="topright"><span>INVISIBLE TECH</span><span>DIGNITY</span></div>
+    </div>
+    <div class="invis" style="margin-top:3vh">
+      <div class="invis-l stagger">
+        <div class="eyebrow">CORE PRINCIPLE · 无感科技</div>
+        <h1 class="fluid-in">让科技<br><span class="ac">隐于木纹之下</span>,<br>让长辈如常生活。</h1>
+        <p>所有传感模块、 致动器、 微泵、 线缆均封装于核桃木框与软包之下, 外观完全保留传统坐具的家具尊严。 长辈不需要学习任何"智能"概念, 只需自然落座, 系统自动守护。</p>
+        <div class="invis-pillars">
+          <div class="pillar"><div class="ic">◎</div><h5>零按钮哲学</h5><p>仅 1 个长按辅助键。</p></div>
+          <div class="pillar"><div class="ic">◆</div><h5>静音 &lt; 30dB</h5><p>致动器近乎无声。</p></div>
+          <div class="pillar"><div class="ic">★</div><h5>木质温度</h5><p>实木 + 棉麻软包。</p></div>
+        </div>
+      </div>
+      <div class="invis-r">
+        <span class="v-tag">FAMILY · MOMENT</span>
+        <video preload="auto" autoplay="" loop="" muted="" playsinline="">
+          <source src="https://cdn.jsdelivr.net/gh/dannykeqiang-sys/image-hosting@main/videos/2026-06-02/1780386462067-0pjgvm-mp4.mp4" type="video/mp4">
+        </video>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========== 17 CONCLUSION =========== -->
+  <section class="slide" data-idx="16">
+    <div class="topbar">
+      <div class="logo"><div class="mark">17</div>商业愿景</div>
+      <div class="topright"><span>VISION 2030</span><span>BUSINESS CANVAS</span></div>
+    </div>
+    <div class="conc" style="margin-top:3vh">
+      <div class="conc-l stagger">
+        <div>
+          <div class="eyebrow">SONGYI · VISION 2030</div>
+          <h1 class="fluid-in">让每一次<br>坐下与起身,<br>都被<span class="ac">温柔守护</span>。</h1>
+          <p class="narr">从 CMF 材料体系到 PVDF 全链路传感, 从长辈端极简色块到子女端医学级仪表板 — 松颐用一把椅子, 构建围绕长辈尊严的智慧健康生态。</p>
+        </div>
+        <div class="canvas-grid">
+          <div class="cv-cell"><div class="l">CMF 体系</div><h5>沙绿 + 主动色</h5><p>沉稳 + 警示, 老幼适宜。</p></div>
+          <div class="cv-cell"><div class="l">制造规格</div><h5>FSC 核桃木</h5><p>30 年寿命 · 模块化。</p></div>
+          <div class="cv-cell"><div class="l">数据合规</div><h5>本地差分隐私</h5><p>GB/T 35273 规范。</p></div>
+          <div class="cv-cell"><div class="l">商业模式</div><h5>硬件 + 订阅</h5><p>子女云 + 社区医疗。</p></div>
+          <div class="cv-cell"><div class="l">市场规模</div><h5>1.2 万亿</h5><p>2030 银发家居赛道。</p></div>
+          <div class="cv-cell"><div class="l">长期愿景</div><h5>银发遥测生态</h5><p>从椅子, 到全屋 OS。</p></div>
+        </div>
+      </div>
+      <div class="conc-r"><div class="img-wrap loaded"><img alt="终幕" src="https://raw.githubusercontent.com/dannykeqiang-sys/image-hosting/main/images/2026-06-02/1780386958105-j24vbl-Gemini_Generated_Image_vn76e5vn76e5vn76.png"></div></div>
+    </div>
+  </section>
+
+</div>
+</div>
+
+<!-- Expand modal -->
+<div class="modal" id="cardModal">
+  <div class="m-back"></div>
+  <div class="m-panel">
+    <button class="m-close" aria-label="关闭">✕</button>
+    <div class="m-body"></div>
+  </div>
+</div>
+
+<div class="dots" id="dots"></div>
+
+<div class="nav-bar">
+  <button id="prevBtn">‹</button>
+  <div class="progress"><div class="fill" id="navFill" style=""></div></div>
+  <div class="pager"><strong id="curPage">01</strong> / <span id="totPage">17</span></div>
+  <button id="nextBtn">›</button>
+</div>
+
+
+
+<script>
+(function(){
+  // ===== Image preload =====
+  document.querySelectorAll('.img-wrap img[data-src]').forEach(img=>{
+    const src=img.getAttribute('data-src');
+    const wrap=img.closest('.img-wrap');
+    const i=new Image();
+    i.onload=()=>{img.src=src;wrap.classList.add('loaded')};
+    i.onerror=()=>{img.src=src;wrap.classList.add('loaded')};
+    i.src=src;
+  });
+  // ===== Video autoplay =====
+  document.querySelectorAll('video').forEach(v=>{
+    v.load();
+    const p=v.play(); if(p&&p.catch) p.catch(()=>{});
+    v.addEventListener('canplay',()=>{const pp=v.play();if(pp&&pp.catch)pp.catch(()=>{})},{once:true});
+  });
+
+  // ===== Slide navigation =====
+  const slides=Array.from(document.querySelectorAll('.slide'));
+  const total=slides.length;
+  let cur=0;
+  const dotsBox=document.getElementById('dots');
+  const curPage=document.getElementById('curPage');
+  const totPage=document.getElementById('totPage');
+  const navFill=document.getElementById('navFill');
+  totPage.textContent=String(total).padStart(2,'0');
+  for(let i=0;i<total;i++){
+    const d=document.createElement('div');
+    d.className='d'+(i===0?' on':'');
+    d.addEventListener('click',()=>go(i));
+    dotsBox.appendChild(d);
+  }
+  const dots=dotsBox.querySelectorAll('.d');
+  function go(n){
+    if(n<0)n=0; if(n>=total)n=total-1;
+    slides[cur].classList.remove('active');
+    dots[cur].classList.remove('on');
+    cur=n;
+    slides[cur].classList.add('active');
+    dots[cur].classList.add('on');
+    curPage.textContent=String(cur+1).padStart(2,'0');
+    navFill.style.width=((cur+1)/total*100)+'%';
+    slides.forEach((s,i)=>{s.querySelectorAll('video').forEach(v=>{if(i===cur){const p=v.play();if(p&&p.catch)p.catch(()=>{})}})});
+  }
+  navFill.style.width=(1/total*100)+'%';
+  document.getElementById('nextBtn').addEventListener('click',()=>go(cur+1));
+  document.getElementById('prevBtn').addEventListener('click',()=>go(cur-1));
+  document.addEventListener('keydown',e=>{
+    const tag=(e.target.tagName||'').toLowerCase();
+    if(e.target.isContentEditable||tag==='input'||tag==='textarea') return;
+    if(document.getElementById('cardModal').classList.contains('on')){
+      if(e.key==='Escape') closeCard();
+      return;
+    }
+    if(['ArrowRight',' ','Space'].includes(e.key)){e.preventDefault();go(cur+1)}
+    else if(e.key==='ArrowLeft'){e.preventDefault();go(cur-1)}
+    else if(e.key==='Home'){e.preventDefault();go(0)}
+    else if(e.key==='End'){e.preventDefault();go(total-1)}
+  });
+
+  // ===== Fullscreen =====
+  const fsBtn=document.getElementById('fsBtn');
+  fsBtn.addEventListener('click',()=>{
+    if(!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+    else document.exitFullscreen?.();
+  });
+  document.addEventListener('fullscreenchange',()=>{
+    const fs=!!document.fullscreenElement;
+    document.body.classList.toggle('is-fullscreen',fs);
+    fsBtn.textContent=fs?'⛶ 退出':'⛶ 全屏';
+  });
+
+  // ===== Universal edit mode =====
+  const editBtn=document.getElementById('editBtn');
+  let editing=false;
+  const SKIP=new Set(['IMG','VIDEO','SOURCE','SVG','PATH','CIRCLE','RECT','LINE','POLYGON','POLYLINE','G','BUTTON','IFRAME','SCRIPT','STYLE','BR','HR','INPUT','TEXTAREA','SELECT','OPTION']);
+  const SKIPCL=['img-wrap','img-tools','dots','nav-bar','progress','fill','tools','m-back','sep'];
+  function collectEditable(){
+    const out=[];
+    document.querySelectorAll('.deck *').forEach(el=>{
+      if(SKIP.has(el.tagName)) return;
+      if(SKIPCL.some(c=>el.classList.contains(c))) return;
+      const hasText=Array.from(el.childNodes).some(n=>n.nodeType===3&&n.textContent.trim().length>0);
+      const isLeaf=el.children.length===0;
+      if(hasText||(isLeaf&&el.textContent&&el.textContent.trim())) out.push(el);
+    });
+    return out;
+  }
+  editBtn.addEventListener('click',()=>{
+    editing=!editing;
+    collectEditable().forEach(el=>{
+      if(editing) el.setAttribute('contenteditable','true');
+      else{el.removeAttribute('contenteditable');el.blur()}
+    });
+    document.body.classList.toggle('edit-mode',editing);
+    editBtn.classList.toggle('on',editing);
+    editBtn.textContent=editing?'🔒 锁定':'✏️ 编辑';
+  });
+
+  // ===== Image edit toolbar (fit/pan/replace/resize) =====
+  const picker=document.getElementById('imgPicker');
+  let pickTarget=null;
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  document.querySelectorAll('.img-wrap').forEach(wrap=>{
+    const img=wrap.querySelector('img'); if(!img) return;
+    const tools=document.createElement('div');
+    tools.className='img-tools';
+    tools.innerHTML='<button data-act="fit">🎯 适配</button><span class="sep"></span><button data-act="pan">✥ 拖动</button><span class="sep"></span><button data-act="reset">↺ 复位</button><span class="sep"></span><button data-act="replace">📷 替换</button>';
+    wrap.appendChild(tools);
+    let posX=50,posY=50;
+    tools.addEventListener('mousedown',e=>e.stopPropagation());
+    tools.addEventListener('click',e=>{
+      const btn=e.target.closest('button'); if(!btn) return;
+      e.stopPropagation();
+      const act=btn.dataset.act;
+      if(act==='fit'){
+        const isContain=wrap.classList.toggle('contain');
+        img.style.objectFit=isContain?'contain':'cover';
+        btn.textContent=isContain?'🎯 包含':'🎯 适配';
+      }else if(act==='pan'){
+        const on=wrap.classList.toggle('is-repos');
+        btn.classList.toggle('on',on);
+        if(on){document.querySelectorAll('.img-wrap.is-repos').forEach(w=>{if(w!==wrap){w.classList.remove('is-repos');w.querySelector('[data-act="pan"]')?.classList.remove('on')}})}
+      }else if(act==='reset'){
+        wrap.style.width=''; wrap.style.height='';
+        img.style.objectPosition=''; img.style.objectFit='';
+        wrap.classList.remove('contain','is-repos');
+        posX=50; posY=50;
+        tools.querySelector('[data-act="fit"]').textContent='🎯 适配';
+        tools.querySelector('[data-act="pan"]').classList.remove('on');
+      }else if(act==='replace'){
+        pickTarget=img; picker.value=''; picker.click();
+      }
+    });
+    wrap.addEventListener('mousedown',e=>{
+      if(!document.body.classList.contains('edit-mode')) return;
+      if(!wrap.classList.contains('is-repos')) return;
+      if(e.target.closest('.img-tools')) return;
+      e.preventDefault();
+      const sx=e.clientX, sy=e.clientY;
+      const sw=wrap.clientWidth, sh=wrap.clientHeight;
+      const spx=posX, spy=posY;
+      function mv(ev){
+        const dx=(ev.clientX-sx)/sw*100;
+        const dy=(ev.clientY-sy)/sh*100;
+        posX=clamp(spx-dx,0,100);
+        posY=clamp(spy-dy,0,100);
+        img.style.objectPosition=posX.toFixed(1)+'% '+posY.toFixed(1)+'%';
+      }
+      function up(){document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up)}
+      document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up);
+    });
+  });
+  picker.addEventListener('change',()=>{
+    const f=picker.files&&picker.files[0]; if(!f||!pickTarget) return;
+    const r=new FileReader();
+    r.onload=ev=>{pickTarget.src=ev.target.result; pickTarget.closest('.img-wrap')?.classList.add('loaded'); pickTarget=null};
+    r.readAsDataURL(f);
+  });
+
+  // ============================================================
+  //   PAGE 6 · EXPANDABLE CARD MODAL (FLIP animation)
+  // ============================================================
+  const modal=document.getElementById('cardModal');
+  const mPanel=modal.querySelector('.m-panel');
+  const mBody=modal.querySelector('.m-body');
+  const mClose=modal.querySelector('.m-close');
+  const mBack=modal.querySelector('.m-back');
+  let originRect=null, originCard=null;
+
+  function openCard(card){
+    if(document.body.classList.contains('edit-mode')) return;
+    const detail=card.querySelector('.detail-body');
+    if(!detail){console.warn('no detail-body found in card');return;}
+    mPanel.classList.remove('green','dark');
+    const theme=card.dataset.theme;
+    if(theme) mPanel.classList.add(theme);
+    mBody.innerHTML=detail.innerHTML;
+    originCard=card;
+    originRect=card.getBoundingClientRect();
+    modal.classList.add('on');
+    // Force layout BEFORE measuring target so display:flex applies
+    mPanel.style.transition='none';
+    mPanel.style.opacity='1';
+    mPanel.style.transform='';
+    void mPanel.offsetHeight; // reflow
+    const target=mPanel.getBoundingClientRect();
+    const dx=(originRect.left+originRect.width/2)-(target.left+target.width/2);
+    const dy=(originRect.top+originRect.height/2)-(target.top+target.height/2);
+    const sx=Math.max(.1,originRect.width/target.width);
+    const sy=Math.max(.1,originRect.height/target.height);
+    mPanel.style.transformOrigin='center center';
+    mPanel.style.transform='translate('+dx+'px,'+dy+'px) scale('+sx+','+sy+')';
+    mPanel.style.opacity='0';
+    void mPanel.offsetHeight; // reflow
+    requestAnimationFrame(()=>{
+      mPanel.style.transition='transform 620ms cubic-bezier(0.22,1,0.36,1),opacity 380ms ease';
+      mPanel.style.transform='';
+      mPanel.style.opacity='1';
+    });
+    document.body.style.overflow='hidden';
+  }
+  function closeCard(){
+    if(!originRect){modal.classList.remove('on'); document.body.style.overflow=''; return;}
+    const target=mPanel.getBoundingClientRect();
+    const dx=(originRect.left+originRect.width/2)-(target.left+target.width/2);
+    const dy=(originRect.top+originRect.height/2)-(target.top+target.height/2);
+    const sx=Math.max(.1,originRect.width/target.width);
+    const sy=Math.max(.1,originRect.height/target.height);
+    mPanel.style.transition='transform 520ms cubic-bezier(0.22,1,0.36,1),opacity 320ms ease 80ms';
+    mPanel.style.transform='translate('+dx+'px,'+dy+'px) scale('+sx+','+sy+')';
+    mPanel.style.opacity='0';
+    setTimeout(()=>{
+      modal.classList.remove('on');
+      mPanel.style.transition=''; mPanel.style.transform=''; mPanel.style.opacity='';
+      mBody.innerHTML='';
+      document.body.style.overflow='';
+      originRect=null; originCard=null;
+    },520);
+  }
+  document.querySelectorAll('.gcard.expandable').forEach(card=>{
+    card.addEventListener('click',e=>{
+      if(e.target.closest('.img-tools')) return;
+      if(e.target.isContentEditable) return;
+      openCard(card);
+    });
+  });
+  mClose.addEventListener('click',closeCard);
+  mBack.addEventListener('click',closeCard);
+
+  // ============================================================
+  //   PAGE 15 · LIVE INTERACTIVE APP
+  // ============================================================
+  const MODES={
+    relax:{name:'放松',en:'RELAX · 椅背 110°',tag:'放松模式',tagColor:'#9DB332',desc:'现在椅子已为您调到放松角度, 深呼吸, 一切交给松颐。',sceneBg:'#FFFFFF',midBg:'linear-gradient(135deg,rgba(184,209,71,.22),rgba(157,179,50,.05))',blob:'#9DB332',tilt:'110°',lumbar:'柔',temp:'28°C',bpm:68,posture:'深度放松',postureBg:'rgba(184,209,71,.25)',postureFg:'#1F2A18',sitting:3,wave:'M0,30 Q20,18 40,30 T80,30 T120,30 T160,30 T200,30',wave2:'M0,38 Q20,46 40,38 T80,38 T120,38 T160,38 T200,38',waveColor:'#9DB332',alert:{t:'状态正常',m:'长辈刚切换至放松模式, 椅背已平稳下放至 110°。',bg:'rgba(184,209,71,.18)',fg:'#1F2A18'}},
+    read:{name:'阅读',en:'READING · 椅背 102°',tag:'阅读模式',tagColor:'#3D6FB6',desc:'光线感应已开启, 椅背微微挺直, 让您看得清, 坐得久。',sceneBg:'#F4F8FF',midBg:'linear-gradient(135deg,rgba(61,111,182,.18),rgba(61,111,182,.04))',blob:'#3D6FB6',tilt:'102°',lumbar:'中',temp:'26°C',bpm:72,posture:'前倾稳态',postureBg:'rgba(61,111,182,.18)',postureFg:'#1F4178',sitting:3,wave:'M0,30 Q15,15 30,30 T60,30 T90,30 T120,30 T150,30 T180,30 T200,30',wave2:'M0,42 Q15,50 30,42 T60,42 T90,42 T120,42 T150,42 T180,42 T200,42',waveColor:'#3D6FB6',alert:{t:'阅读保护已启动',m:'触发久坐提醒倒计时 45 分钟, 到时会自动提示舒展。',bg:'rgba(61,111,182,.12)',fg:'#1F4178'}},
+    stand:{name:'起身',en:'ASSIST · 抬升 30°',tag:'辅助起身',tagColor:'#E25E40',desc:'扶手已锁定, 椅面正在缓慢抬起, 请扶稳, 站稳后再移步。',sceneBg:'#FFF6F2',midBg:'linear-gradient(135deg,rgba(226,94,64,.22),rgba(226,94,64,.06))',blob:'#E25E40',tilt:'30° ↑',lumbar:'锁',temp:'27°C',bpm:84,posture:'起身中',postureBg:'rgba(226,94,64,.2)',postureFg:'#8C2A1C',sitting:3,wave:'M0,30 L10,10 L20,50 L30,15 L45,45 L60,20 L75,40 L90,15 L110,45 L130,20 L150,40 L170,18 L200,30',wave2:'M0,40 L15,55 L30,30 L50,50 L70,30 L90,50 L110,30 L130,50 L150,32 L170,48 L200,40',waveColor:'#E25E40',alert:{t:'⚠ 辅助进行中',m:'已通知子女端: 张奶奶正在起身, 系统将持续监测 90s 直至完全站立。',bg:'rgba(226,94,64,.14)',fg:'#8C2A1C'}},
+    nap:{name:'午休',en:'NAP · 椅背 135°',tag:'午休模式',tagColor:'#7B5EA8',desc:'灯光柔化, 椅背平躺, 静谧的午后, 静静地休息一会儿吧。',sceneBg:'#FAF6FF',midBg:'linear-gradient(135deg,rgba(123,94,168,.2),rgba(123,94,168,.04))',blob:'#7B5EA8',tilt:'135°',lumbar:'软',temp:'29°C',bpm:62,posture:'浅睡平稳',postureBg:'rgba(123,94,168,.18)',postureFg:'#4A2C72',sitting:4,wave:'M0,30 Q40,24 80,30 T160,30 T200,30',wave2:'M0,38 Q40,42 80,38 T160,38 T200,38',waveColor:'#7B5EA8',alert:{t:'睡眠监测',m:'呼吸频率 14/min, 心率稳定。 30 分钟后将柔光唤醒。',bg:'rgba(123,94,168,.12)',fg:'#4A2C72'}}
+  };
+  const u={btns:document.querySelectorAll('#elderModeBtns .mb'),scene:document.getElementById('elderScene'),tag:document.getElementById('elderModeTag'),desc:document.getElementById('elderModeDesc'),stage:document.getElementById('blobStage'),blob:document.getElementById('liveBlob'),midName:document.getElementById('midName'),midEn:document.getElementById('midEn'),midTilt:document.getElementById('midTilt'),midLumbar:document.getElementById('midLumbar'),midTemp:document.getElementById('midTemp'),bpm:document.getElementById('careBpm'),posture:document.getElementById('carePosture'),sitting:document.getElementById('careSitting'),alert:document.getElementById('careAlert'),wavePri:document.getElementById('wavePri'),waveSec:document.getElementById('waveSec')};
+  let curMode='relax';
+  function applyMode(k){
+    const m=MODES[k]; if(!m) return;
+    curMode=k;
+    u.btns.forEach(b=>b.classList.toggle('active',b.dataset.mode===k));
+    if(u.scene) u.scene.style.background=m.sceneBg;
+    if(u.tag){u.tag.textContent=m.tag; u.tag.style.background=m.tagColor;}
+    if(u.desc) u.desc.textContent=m.desc;
+    if(u.stage) u.stage.style.background=m.midBg;
+    if(u.blob){u.blob.style.background=m.blob; u.blob.style.color=m.blob;}
+    if(u.midName) u.midName.textContent=m.name;
+    if(u.midEn) u.midEn.textContent=m.en;
+    if(u.midTilt) u.midTilt.textContent=m.tilt;
+    if(u.midLumbar) u.midLumbar.textContent=m.lumbar;
+    if(u.midTemp) u.midTemp.textContent=m.temp;
+    if(u.bpm) u.bpm.textContent=m.bpm;
+    if(u.posture){u.posture.textContent=m.posture; u.posture.style.background=m.postureBg; u.posture.style.color=m.postureFg;}
+    if(u.sitting) u.sitting.textContent=m.sitting;
+    if(u.alert){u.alert.innerHTML='<strong>'+m.alert.t+'</strong>'+m.alert.m; u.alert.style.background=m.alert.bg; u.alert.style.color=m.alert.fg;}
+    if(u.wavePri){u.wavePri.setAttribute('d',m.wave); u.wavePri.setAttribute('stroke',m.waveColor);}
+    if(u.waveSec) u.waveSec.setAttribute('d',m.wave2);
+  }
+  u.btns.forEach(b=>b.addEventListener('click',()=>{
+    if(document.body.classList.contains('edit-mode')) return;
+    applyMode(b.dataset.mode);
+  }));
+  setInterval(()=>{
+    const m=MODES[curMode]; if(!m||!u.bpm) return;
+    const j=Math.round((Math.random()-.5)*4);
+    u.bpm.textContent=Math.max(50,Math.min(110,m.bpm+j));
+  },1400);
+  applyMode('relax');
+
+  // ============================================================
+  //   EXPORT CURRENT EDITED HTML
+  // ============================================================
+  const exportBtn=document.getElementById('exportBtn');
+  exportBtn.addEventListener('click',()=>{
+    exportBtn.textContent='⏳ 生成中…';
+    const root=document.documentElement.cloneNode(true);
+    const bd=root.querySelector('body');
+    bd?.classList.remove('edit-mode','is-fullscreen');
+    root.querySelectorAll('[contenteditable]').forEach(el=>el.removeAttribute('contenteditable'));
+    root.querySelector('#imgPicker')?.remove();
+    root.querySelectorAll('.img-wrap img').forEach(img=>{img.removeAttribute('data-src'); img.closest('.img-wrap')?.classList.add('loaded')});
+    root.querySelectorAll('.img-tools').forEach(t=>t.remove());
+    root.querySelectorAll('.img-wrap.is-repos').forEach(w=>w.classList.remove('is-repos'));
+    root.querySelectorAll('.slide').forEach((s,i)=>{s.classList.toggle('active',i===0)});
+    const dotsEl=root.querySelector('#dots'); if(dotsEl) dotsEl.innerHTML='';
+    const cp=root.querySelector('#curPage'); if(cp) cp.textContent='01';
+    const fill=root.querySelector('#navFill'); if(fill) fill.style.width='';
+    root.querySelector('#cardModal')?.classList.remove('on');
+    const html='<!DOCTYPE html>\n'+root.outerHTML;
+    const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download='songyi_anima_'+new Date().toISOString().slice(0,10)+'.html';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>{URL.revokeObjectURL(url); exportBtn.textContent='✓ 已导出'; setTimeout(()=>{exportBtn.textContent='⬇ 导出'},1800)},400);
+  });
+
+})();
+</script>
+
+
+</body></html>
